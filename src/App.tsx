@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -748,7 +749,16 @@ const DashboardView = () => {
   );
 };
 
-const Header = ({ currentView, onViewChange }: { currentView: string, onViewChange: (v: any) => void }) => {
+type View =
+  | 'Dashboard'
+  | 'Market'
+  | 'Trade'
+  | 'TransferOut'
+  | 'Incoming'
+  | 'Records'
+  | 'Assets';
+
+const Header = ({ currentView, onViewChange }: { currentView: View, onViewChange: (v: View) => void }) => {
   const [isBrokerageOpen, setIsBrokerageOpen] = useState(false);
   const brokerageItems = [
     { id: 'TransferOut', label: 'Transfer Out' },
@@ -1893,6 +1903,8 @@ const IncomingTransfersView = ({
 };
 
 export default function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isAuthed, setIsAuthed] = useState(() => {
     try {
       return localStorage.getItem(AUTH_STORAGE_KEY) === 'true';
@@ -1910,7 +1922,29 @@ export default function App() {
     }
   }, [isAuthed]);
 
-  const [view, setView] = useState<'Dashboard' | 'Market' | 'Trade' | 'TransferOut' | 'Incoming' | 'Records' | 'Assets'>('Dashboard');
+  const pathToView: Record<string, View> = {
+    '/': 'Dashboard',
+    '/market': 'Market',
+    '/trade': 'Trade',
+    '/transfer-out': 'TransferOut',
+    '/incoming': 'Incoming',
+    '/records': 'Records',
+    '/assets': 'Assets',
+  };
+
+  const viewToPath: Record<View, string> = {
+    Dashboard: '/',
+    Market: '/market',
+    Trade: '/trade',
+    TransferOut: '/transfer-out',
+    Incoming: '/incoming',
+    Records: '/records',
+    Assets: '/assets',
+  };
+
+  const view: View = useMemo(() => {
+    return pathToView[location.pathname] ?? 'Dashboard';
+  }, [location.pathname]);
   const [selectedStock, setSelectedStock] = useState<Stock>(HK_STOCKS[0]);
   const [requests, setRequests] = useState<TradeRequest[]>([]);
   const [incomingTransfers, setIncomingTransfers] = useState<IncomingTransfer[]>(MOCK_INCOMING_TRANSFERS);
@@ -1992,8 +2026,11 @@ export default function App() {
     }));
   };
 
-  const handleViewChange = (newView: any) => {
-    setView(newView);
+  const handleViewChange = (newView: View) => {
+    const path = viewToPath[newView] ?? '/';
+    if (path !== location.pathname) {
+      navigate(path);
+    }
   };
 
   if (!isAuthed) {
