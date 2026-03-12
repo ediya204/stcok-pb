@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { LayoutGrid, Info, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { PageHeader, EmptyState, StatusChip } from '../components/index';
+import { PageHeader, EmptyState, StatusChip, DetailDrawer } from '../components/index';
 import type { Position } from '../constants';
 
 type AssetKpi = {
@@ -463,6 +463,15 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
     []
   );
 
+  const [openAction, setOpenAction] = useState<'deposit' | 'withdraw' | 'transfer' | 'export' | null>(null);
+
+  const actionConfig = {
+    deposit: { title: 'Deposit Funds', subtitle: 'Add funds to your account' },
+    withdraw: { title: 'Withdraw Funds', subtitle: 'Submit a withdrawal request' },
+    transfer: { title: 'Transfer', subtitle: 'Transfer between ledgers or accounts' },
+    export: { title: 'Export Statement', subtitle: 'Download your account statement' },
+  };
+
   return (
     <div className="flex-1 p-6 md:p-8 overflow-y-auto custom-scrollbar bg-[#F3F4F6]">
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
@@ -471,10 +480,10 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
           title="Asset Overview"
           subtitle="Centralized view of your total equity, cash, holdings and recent fund activities across the account."
           actions={[
-            { label: 'Deposit', onClick: () => {}, primary: true },
-            { label: 'Withdraw', onClick: () => {} },
-            { label: 'Transfer', onClick: () => {} },
-            { label: 'Export Statement', onClick: () => {} },
+            { label: 'Deposit', onClick: () => setOpenAction('deposit'), primary: true },
+            { label: 'Withdraw', onClick: () => setOpenAction('withdraw') },
+            { label: 'Transfer', onClick: () => setOpenAction('transfer') },
+            { label: 'Export Statement', onClick: () => setOpenAction('export') },
           ]}
         >
           <AssetHeaderActions baseCurrency={account.baseCurrency} accountType={account.accountType} lastUpdated={account.lastUpdated} />
@@ -492,6 +501,121 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
           <AssetAlertsCard items={alerts} />
         </div>
       </div>
+
+      {/* Action modals: Deposit / Withdraw / Transfer / Export */}
+      {openAction && (
+        <DetailDrawer
+          open={!!openAction}
+          onClose={() => setOpenAction(null)}
+          title={actionConfig[openAction].title}
+          subtitle={actionConfig[openAction].subtitle}
+          footer={
+            openAction === 'export' ? (
+              <button
+                type="button"
+                onClick={() => setOpenAction(null)}
+                className="w-full py-3 rounded-xl bg-huobi-blue text-white text-xs font-bold uppercase tracking-widest hover:bg-huobi-blue/90"
+              >
+                Download
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setOpenAction(null)}
+                className="w-full py-3 rounded-xl border border-huobi-border text-huobi-text text-xs font-bold uppercase tracking-widest hover:bg-huobi-card"
+              >
+                Cancel
+              </button>
+            )
+          }
+        >
+          {openAction === 'deposit' && (
+            <div className="flex flex-col gap-4">
+              <p className="text-[11px] text-huobi-muted">Select currency and amount to deposit. Funds will be credited after settlement.</p>
+              <div>
+                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Currency</label>
+                <select className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue">
+                  <option>HKD</option>
+                  <option>USD</option>
+                  <option>CNY</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Amount</label>
+                <input type="number" placeholder="0.00" className="w-full px-4 py-3 rounded-xl border border-huobi-border font-mono focus:outline-none focus:border-huobi-blue" />
+              </div>
+              <div className="p-3 rounded-xl bg-huobi-card border border-huobi-border text-[11px] text-huobi-muted">
+                Deposit instructions and reference will be provided after you confirm. Subject to broker processing.
+              </div>
+            </div>
+          )}
+          {openAction === 'withdraw' && (
+            <div className="flex flex-col gap-4">
+              <p className="text-[11px] text-huobi-muted">Submit a withdrawal request. Available balance only; processing may take 1–2 business days.</p>
+              <div>
+                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Currency</label>
+                <select className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue">
+                  <option>HKD</option>
+                  <option>USD</option>
+                  <option>CNY</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Amount</label>
+                <input type="number" placeholder="0.00" className="w-full px-4 py-3 rounded-xl border border-huobi-border font-mono focus:outline-none focus:border-huobi-blue" />
+              </div>
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
+                Withdrawals are subject to review. Ensure bank details are up to date in account settings.
+              </div>
+            </div>
+          )}
+          {openAction === 'transfer' && (
+            <div className="flex flex-col gap-4">
+              <p className="text-[11px] text-huobi-muted">Transfer between your cash ledgers (e.g. HKD ↔ USD) or to another account.</p>
+              <div>
+                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">From</label>
+                <select className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue">
+                  <option>HKD Ledger</option>
+                  <option>USD Ledger</option>
+                  <option>CNY Ledger</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">To</label>
+                <select className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue">
+                  <option>USD Ledger</option>
+                  <option>HKD Ledger</option>
+                  <option>CNY Ledger</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Amount</label>
+                <input type="number" placeholder="0.00" className="w-full px-4 py-3 rounded-xl border border-huobi-border font-mono focus:outline-none focus:border-huobi-blue" />
+              </div>
+            </div>
+          )}
+          {openAction === 'export' && (
+            <div className="flex flex-col gap-4">
+              <p className="text-[11px] text-huobi-muted">Choose date range and format to download your statement.</p>
+              <div>
+                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">From date</label>
+                <input type="date" className="w-full px-4 py-3 rounded-xl border border-huobi-border focus:outline-none focus:border-huobi-blue" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">To date</label>
+                <input type="date" className="w-full px-4 py-3 rounded-xl border border-huobi-border focus:outline-none focus:border-huobi-blue" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Format</label>
+                <select className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue">
+                  <option>CSV</option>
+                  <option>PDF</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </DetailDrawer>
+      )}
     </div>
   );
 }
