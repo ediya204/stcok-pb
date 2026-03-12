@@ -24,7 +24,9 @@ import {
   RefreshCw,
   Globe,
   Moon,
-  ChevronRight
+  ChevronRight,
+  Settings,
+  LogOut
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -767,8 +769,22 @@ type View =
   | 'Records'
   | 'Assets';
 
-const Header = ({ currentView, onViewChange }: { currentView: View, onViewChange: (v: View) => void }) => {
+const Header = ({
+  currentView,
+  onViewChange,
+  onOpenSettings,
+  onLock,
+  onLogout,
+}: {
+  currentView: View;
+  onViewChange: (v: View) => void;
+  onOpenSettings: () => void;
+  onLock: () => void;
+  onLogout: () => void;
+}) => {
   const [isBrokerageOpen, setIsBrokerageOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = React.useRef<HTMLDivElement | null>(null);
   const brokerageItems = [
     { id: 'TransferOut', label: 'Transfer Out' },
     { id: 'Incoming', label: 'Transfer In' },
@@ -776,6 +792,29 @@ const Header = ({ currentView, onViewChange }: { currentView: View, onViewChange
   ];
 
   const isBrokerageActive = brokerageItems.some(item => item.id === currentView);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!userMenuRef.current) return;
+      if (!(event.target instanceof Node)) return;
+      if (!userMenuRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   return (
     <header className="h-20 border-b border-white/20 bg-white/70 backdrop-blur-xl flex items-center justify-between px-8 z-50 sticky top-0">
@@ -790,14 +829,14 @@ const Header = ({ currentView, onViewChange }: { currentView: View, onViewChange
           </div>
         </div>
         <nav className="hidden lg:flex items-center gap-1">
-          {[
+          {([
             { id: 'Dashboard', label: 'Dashboard' },
             { id: 'Market', label: 'Market' },
             { id: 'Trade', label: 'Trade' }
-          ].map(item => (
+          ] as const).map(item => (
             <button 
-              key={item.id} 
-              onClick={() => onViewChange(item.id)}
+              key={item.id}
+              onClick={() => onViewChange(item.id as View)}
               className={cn(
                 "px-4 py-2 text-xs font-black uppercase tracking-widest transition-all rounded-xl",
                 currentView === item.id ? "bg-huobi-text text-white shadow-lg" : "text-huobi-muted hover:text-huobi-text hover:bg-gray-100"
@@ -835,7 +874,7 @@ const Header = ({ currentView, onViewChange }: { currentView: View, onViewChange
                     <button
                       key={item.id}
                       onClick={() => {
-                        onViewChange(item.id);
+                        onViewChange(item.id as View);
                         setIsBrokerageOpen(false);
                       }}
                       className={cn(
@@ -851,12 +890,12 @@ const Header = ({ currentView, onViewChange }: { currentView: View, onViewChange
             </AnimatePresence>
           </div>
 
-          {[
+          {([
             { id: 'Assets', label: 'Assets' }
-          ].map(item => (
+          ] as const).map(item => (
             <button 
               key={item.id} 
-              onClick={() => onViewChange(item.id)}
+              onClick={() => onViewChange(item.id as View)}
               className={cn(
                 "px-4 py-2 text-xs font-black uppercase tracking-widest transition-all rounded-xl",
                 currentView === item.id ? "bg-huobi-text text-white shadow-lg" : "text-huobi-muted hover:text-huobi-text hover:bg-gray-100"
@@ -872,17 +911,79 @@ const Header = ({ currentView, onViewChange }: { currentView: View, onViewChange
         <div className="w-2 h-2 bg-huobi-up rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
         <span className="text-[10px] font-black text-huobi-muted uppercase tracking-wider">HKEX: <span className="text-huobi-text">OPEN</span></span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" ref={userMenuRef}>
         <button className="p-2.5 text-huobi-muted hover:text-huobi-blue hover:bg-huobi-blue/5 rounded-xl transition-all relative">
           <Bell className="w-5 h-5" />
           <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-huobi-down rounded-full border-2 border-white" />
         </button>
-        <button className="flex items-center gap-3 p-1.5 pr-4 bg-white border border-huobi-border rounded-2xl hover:shadow-md transition-all">
+        <button
+          className={cn(
+            'relative flex items-center gap-3 p-1.5 pr-4 bg-white border border-huobi-border rounded-2xl hover:shadow-md transition-all',
+            isUserMenuOpen && 'shadow-lg border-huobi-blue'
+          )}
+          onClick={() => setIsUserMenuOpen((v) => !v)}
+        >
           <div className="w-8 h-8 bg-huobi-blue/10 rounded-xl flex items-center justify-center overflow-hidden">
             <img src="https://picsum.photos/seed/user/100/100" alt="User" className="w-full h-full object-cover" />
           </div>
-          <span className="text-xs font-black text-huobi-text hidden md:block">James Bond</span>
+          <span className="ty-title-sm text-huobi-text hidden md:block">James Bond</span>
         </button>
+
+        <AnimatePresence>
+          {isUserMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              className="absolute right-8 top-16 w-72 bg-white border border-huobi-border rounded-2xl shadow-2xl z-[80] overflow-hidden"
+            >
+              <div className="p-4 flex items-center gap-3 border-b border-huobi-border/60">
+                <div className="w-10 h-10 rounded-2xl overflow-hidden bg-huobi-blue/10 flex items-center justify-center">
+                  <img src="https://picsum.photos/seed/user/100/100" alt="User" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="ty-title-md text-huobi-text truncate">James Bond</span>
+                  <span className="ty-label-sm text-huobi-muted">Securities Account · HKD</span>
+                </div>
+              </div>
+              <div className="flex flex-col py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onOpenSettings();
+                  }}
+                  className="w-full px-4 py-3 text-left ty-body-md text-huobi-text hover:bg-huobi-card flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4 text-huobi-muted" />
+                  <span>Settings</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onLock();
+                  }}
+                  className="w-full px-4 py-3 text-left ty-body-md text-huobi-text hover:bg-huobi-card flex items-center gap-2"
+                >
+                  <Lock className="w-4 h-4 text-huobi-muted" />
+                  <span>Lock</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onLogout();
+                  }}
+                  className="w-full px-4 py-3 text-left ty-body-md text-huobi-down hover:bg-huobi-down/5 flex items-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Log out</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   </header>
@@ -2040,6 +2141,14 @@ export default function App() {
   const [recordsSearch, setRecordsSearch] = useState('');
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [exportingRecords, setExportingRecords] = useState(false);
+  const [isPersonalCenterOpen, setIsPersonalCenterOpen] = useState(false);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockPassword, setLockPassword] = useState('');
+  const [lockError, setLockError] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const LOCK_PASSWORD = 'bond007';
 
   const filteredRecords = useMemo(() => {
     let list = recordsTypeFilter === 'all' ? requests : requests.filter(r => r.type === recordsTypeFilter);
@@ -2510,7 +2619,97 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden select-none bg-[#F3F4F6] text-huobi-text">
-      <Header currentView={view} onViewChange={handleViewChange} />
+      {/* Lock screen overlay */}
+      <AnimatePresence>
+        {isLocked && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-huobi-text/70 backdrop-blur-md"
+          >
+            <div className="w-full max-w-md bg-white rounded-[2rem] shadow-2xl p-8 flex flex-col gap-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl overflow-hidden bg-huobi-blue/10 flex items-center justify-center">
+                  <img src="https://picsum.photos/seed/user/100/100" alt="User" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="ty-title-md text-huobi-text">James Bond</span>
+                  <span className="ty-label-sm text-huobi-muted">Session locked</span>
+                </div>
+              </div>
+              <p className="ty-body-sm text-huobi-muted">
+                Your session is locked. Enter your password to continue.（Demo 密码：<span className="font-mono">bond007</span>）
+              </p>
+              <div className="flex flex-col gap-2">
+                <label className="ty-label-sm text-huobi-muted">Password</label>
+                <input
+                  type="password"
+                  value={lockPassword}
+                  onChange={(e) => {
+                    setLockPassword(e.target.value);
+                    if (lockError) setLockError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (!lockPassword) {
+                        setLockError('Please enter your password');
+                        return;
+                      }
+                      if (lockPassword !== LOCK_PASSWORD) {
+                        setLockError('Incorrect password, please try again');
+                        return;
+                      }
+                      setIsLocked(false);
+                      setLockPassword('');
+                      setLockError(null);
+                    }
+                  }}
+                  className="w-full px-4 py-3 rounded-xl border border-huobi-border focus:outline-none focus:border-huobi-blue font-mono"
+                  autoFocus
+                />
+                {lockError && <span className="ty-body-sm text-huobi-down">{lockError}</span>}
+              </div>
+              <div className="flex justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsLogoutDialogOpen(true)}
+                  className="px-4 py-2 rounded-xl border border-huobi-border ty-body-sm text-huobi-text hover:bg-huobi-card"
+                >
+                  Log out instead
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!lockPassword) {
+                      setLockError('Please enter your password');
+                      return;
+                    }
+                    if (lockPassword !== LOCK_PASSWORD) {
+                      setLockError('Incorrect password, please try again');
+                      return;
+                    }
+                    setIsLocked(false);
+                    setLockPassword('');
+                    setLockError(null);
+                  }}
+                  className="px-6 py-2 rounded-xl bg-huobi-blue text-white ty-title-sm tracking-[0.12em] uppercase hover:bg-huobi-blue/90"
+                >
+                  Unlock
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Header
+        currentView={view}
+        onViewChange={handleViewChange}
+        onOpenSettings={() => setIsPersonalCenterOpen(true)}
+        onLock={() => setIsLocked(true)}
+        onLogout={() => setIsLogoutDialogOpen(true)}
+      />
       
       <main className="flex flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">
@@ -2537,6 +2736,154 @@ export default function App() {
           ))}
         </AnimatePresence>
       </div>
+
+      {/* Personal Center Drawer */}
+      <DetailDrawer
+        open={isPersonalCenterOpen}
+        onClose={() => setIsPersonalCenterOpen(false)}
+        title="Account Settings"
+        subtitle="Manage your personal information, security and notification preferences."
+      >
+        <div className="flex flex-col gap-6">
+          <div className="grid grid-cols-[auto,1fr] gap-4 items-center">
+            <div className="w-14 h-14 rounded-2xl overflow-hidden bg-huobi-blue/10 flex items-center justify-center">
+              <img src="https://picsum.photos/seed/user/100/100" alt="User" className="w-full h-full object-cover" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="ty-title-md text-huobi-text">James Bond</span>
+              <span className="ty-body-sm text-huobi-muted">Account ID: 8000-123456 · Securities · Base CCY: HKD</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white rounded-2xl border border-huobi-border p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="ty-label-sm text-huobi-muted">Personal information</span>
+              </div>
+              <div className="space-y-2 ty-body-sm text-huobi-text">
+                <div className="flex justify-between gap-3">
+                  <span className="text-huobi-muted">Full name</span>
+                  <span className="font-medium">James Bond</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-huobi-muted">Email</span>
+                  <span className="font-medium">bond@example.com</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-huobi-muted">Mobile</span>
+                  <span className="font-medium">+852 6123 4567</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-huobi-muted">Region</span>
+                  <span className="font-medium">Hong Kong</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-huobi-border p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="ty-label-sm text-huobi-muted">Security</span>
+              </div>
+              <div className="space-y-2 ty-body-sm text-huobi-text">
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-huobi-muted">Login password</span>
+                  <button className="ty-body-sm text-huobi-blue hover:underline">Change…</button>
+                </div>
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-huobi-muted">Two-factor auth</span>
+                  <span className="font-medium text-huobi-up">Enabled</span>
+                </div>
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-huobi-muted">Last login</span>
+                  <span className="font-medium">Today 10:12 · HK</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white rounded-2xl border border-huobi-border p-4 flex flex-col gap-3">
+              <span className="ty-label-sm text-huobi-muted">Preferences</span>
+              <div className="space-y-2 ty-body-sm text-huobi-text">
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-huobi-muted">Theme</span>
+                  <span className="font-medium">Light</span>
+                </div>
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-huobi-muted">Notifications</span>
+                  <span className="font-medium">Email + In-app</span>
+                </div>
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-huobi-muted">Default currency</span>
+                  <span className="font-medium">HKD</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-huobi-border p-4 flex flex-col gap-3">
+              <span className="ty-label-sm text-huobi-muted">Linked funding</span>
+              <div className="space-y-2 ty-body-sm text-huobi-text">
+                <div className="flex justify-between gap-3">
+                  <span className="text-huobi-muted">Primary bank</span>
+                  <span className="font-medium">HSBC HK · **** 1234</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-huobi-muted">Default withdrawal</span>
+                  <span className="font-medium">Same as primary</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </DetailDrawer>
+
+      {/* Logout confirm dialog */}
+      <AnimatePresence>
+        {isLogoutDialogOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[210] flex items-center justify-center bg-huobi-text/50 backdrop-blur-sm"
+          >
+            <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 flex flex-col gap-4">
+              <h2 className="ty-headline-sm text-huobi-text">Log out?</h2>
+              <p className="ty-body-sm text-huobi-muted">You are about to sign out of your account.</p>
+              <div className="flex justify-end gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isLoggingOut) return;
+                    setIsLogoutDialogOpen(false);
+                  }}
+                  className="px-4 py-2 rounded-xl border border-huobi-border ty-body-sm text-huobi-text hover:bg-huobi-card"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setIsLoggingOut(true);
+                    try {
+                      localStorage.removeItem(AUTH_STORAGE_KEY);
+                    } catch {
+                      // ignore
+                    }
+                    setIsAuthed(false);
+                    setIsLoggingOut(false);
+                    setIsLogoutDialogOpen(false);
+                    navigate(LOGIN_PATH, { replace: true });
+                  }}
+                  className="px-4 py-2 rounded-xl bg-huobi-blue text-white ty-body-sm font-semibold hover:bg-huobi-blue/90 disabled:opacity-50"
+                  disabled={isLoggingOut}
+                >
+                  {isLoggingOut ? 'Logging out…' : 'Confirm log out'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Footer */}
       <div className="lg:hidden h-14 border-t border-huobi-border bg-huobi-card flex items-center justify-around px-4">
