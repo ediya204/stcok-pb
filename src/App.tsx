@@ -2006,29 +2006,76 @@ export default function App() {
         return <DashboardView />;
       case 'Market':
         return (
-          <div className="flex flex-1 overflow-hidden flex-col lg:flex-row">
+          <div className="flex flex-1 overflow-hidden bg-huobi-bg">
+            {/* Left: Asset list */}
             <MarketList onSelect={setSelectedStock} selectedSymbol={selectedStock.symbol} />
 
-            <div className="flex-1 min-w-0 overflow-y-auto custom-scrollbar p-4 md:p-6 bg-huobi-bg">
-              <div className="max-w-5xl mx-auto flex flex-col gap-6">
+            {/* Right: Trading workspace */}
+            <div className="flex-1 min-w-0 flex flex-col">
+              {/* Page header + selected asset summary */}
+              <div className="border-b border-huobi-border bg-white/80 backdrop-blur-md px-4 md:px-6 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="flex flex-col gap-1">
-                  <h2 className="text-2xl md:text-3xl font-bold text-huobi-text tracking-tight">Broker Entrustment</h2>
-                  <p className="text-huobi-muted text-sm">
-                    Select an asset and submit your trading application. Final results are subject to broker review and execution.
-                  </p>
+                  <div className="text-[10px] font-black text-huobi-blue uppercase tracking-[0.25em]">Trading Workspace</div>
+                  <div className="flex items-baseline gap-3 flex-wrap">
+                    <span className="text-xl md:text-2xl font-black text-huobi-text tracking-tight">
+                      {selectedStock.symbol}.HK
+                    </span>
+                    <span className="text-sm text-huobi-muted font-bold">{selectedStock.name}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-end gap-4 text-[11px] font-bold">
+                  <div className="flex flex-col">
+                    <span className="text-huobi-muted uppercase tracking-widest">Last Price</span>
+                    <span className={cn(
+                      "text-lg font-black tracking-tight",
+                      selectedStock.change >= 0 ? "text-huobi-up" : "text-huobi-down"
+                    )}>
+                      {selectedStock.price.toFixed(2)} HKD
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-huobi-muted uppercase tracking-widest">Change</span>
+                    <span className={cn(
+                      "font-black",
+                      selectedStock.change >= 0 ? "text-huobi-up" : "text-huobi-down"
+                    )}>
+                      {selectedStock.change >= 0 ? '+' : ''}{selectedStock.change.toFixed(2)} ({selectedStock.changePercent.toFixed(2)}%)
+                    </span>
+                  </div>
+                  <div className="hidden sm:flex flex-col">
+                    <span className="text-huobi-muted uppercase tracking-widest">Day Range</span>
+                    <span className="text-huobi-text font-mono">
+                      {selectedStock.low.toFixed(2)} – {selectedStock.high.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Main 3-column workspace */}
+              <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 p-4 md:p-6">
+                {/* Center: chart / market info */}
+                <div className="flex-[2] min-w-0 flex">
+                  <TradingChart stock={selectedStock} />
                 </div>
 
-                <div className="bg-huobi-card border border-huobi-border rounded-2xl overflow-visible shadow-2xl">
+                {/* Right: order entry */}
+                <div className="w-full lg:w-[380px] xl:w-[410px] flex-shrink-0">
                   <RequestEntry
                     stock={selectedStock}
-                    onStockChange={setSelectedStock}
                     onCreateRequest={handleCreateRequest}
                     initialMode="Trade"
-                    hideModeToggle={true}
-                    showStockSelector={true}
                     position={positions.find(p => p.symbol === selectedStock.symbol)}
                   />
                 </div>
+              </div>
+
+              {/* Bottom: positions & orders workspace */}
+              <div className="border-t border-huobi-border bg-huobi-card/60">
+                <PortfolioTabs
+                  requests={requests.filter(r => r.type === 'Trade')}
+                  positions={positions}
+                  onCancelRequest={handleCancelRequest}
+                />
               </div>
             </div>
           </div>
