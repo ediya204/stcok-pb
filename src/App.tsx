@@ -32,6 +32,11 @@ import {
   Pie,
   Cell,
   Tooltip,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
 } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -762,7 +767,7 @@ const Header = ({ currentView, onViewChange }: { currentView: View, onViewChange
   const [isBrokerageOpen, setIsBrokerageOpen] = useState(false);
   const brokerageItems = [
     { id: 'TransferOut', label: 'Transfer Out' },
-    { id: 'Incoming', label: 'Incoming' },
+    { id: 'Incoming', label: 'Transfer In' },
     { id: 'Records', label: 'History' }
   ];
 
@@ -1922,6 +1927,19 @@ export default function App() {
     }
   }, [isAuthed]);
 
+  // Keep URL in sync with auth status:
+  // - Not authed: always stay on /login
+  // - Authed: /login 自动跳到首页 /
+  useEffect(() => {
+    if (!isAuthed && location.pathname !== '/login') {
+      navigate('/login', { replace: true });
+      return;
+    }
+    if (isAuthed && location.pathname === '/login') {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthed, location.pathname, navigate]);
+
   const pathToView: Record<string, View> = {
     '/': 'Dashboard',
     '/market': 'Market',
@@ -2032,6 +2050,36 @@ export default function App() {
       navigate(path);
     }
   };
+
+  // Must run every render (before any early return) to satisfy Rules of Hooks
+  useEffect(() => {
+    if (!isAuthed) return;
+    const unsubscribe = alltickService.subscribe(selectedStock.symbol, (ticker) => {
+      const newPrice = parseFloat(ticker.last_price);
+      const openPrice = parseFloat(ticker.open_price) || (newPrice - (Math.random() * 2));
+      const change = newPrice - openPrice;
+      const changePercent = (change / openPrice) * 100;
+
+      setSelectedStock(prev => ({
+        ...prev,
+        price: newPrice,
+        change: change,
+        changePercent: changePercent,
+        high: parseFloat(ticker.high_price) || prev.high,
+        low: parseFloat(ticker.low_price) || prev.low,
+        volume: parseFloat(ticker.volume) || prev.volume
+      }));
+
+      setPositions(prev => prev.map(p => {
+        if (p.symbol === selectedStock.symbol) {
+          return { ...p, currentPrice: newPrice };
+        }
+        return p;
+      }));
+    });
+
+    return () => unsubscribe();
+  }, [isAuthed, selectedStock.symbol]);
 
   if (!isAuthed) {
     return <LoginView onLogin={() => setIsAuthed(true)} />;
@@ -2283,35 +2331,6 @@ export default function App() {
         return null;
     }
   };
-
-  // Price Simulation & Real-time Updates
-  useEffect(() => {
-    const unsubscribe = alltickService.subscribe(selectedStock.symbol, (ticker) => {
-      const newPrice = parseFloat(ticker.last_price);
-      const openPrice = parseFloat(ticker.open_price) || (newPrice - (Math.random() * 2)); // Fallback if open_price missing
-      const change = newPrice - openPrice;
-      const changePercent = (change / openPrice) * 100;
-
-      setSelectedStock(prev => ({
-        ...prev,
-        price: newPrice,
-        change: change,
-        changePercent: changePercent,
-        high: parseFloat(ticker.high_price) || prev.high,
-        low: parseFloat(ticker.low_price) || prev.low,
-        volume: parseFloat(ticker.volume) || prev.volume
-      }));
-
-      setPositions(prev => prev.map(p => {
-        if (p.symbol === selectedStock.symbol) {
-          return { ...p, currentPrice: newPrice };
-        }
-        return p;
-      }));
-    });
-
-    return () => unsubscribe();
-  }, [selectedStock.symbol]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden select-none bg-[#F3F4F6] text-huobi-text">
