@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@theme {
+  --color-huobi-blue: #0052ff;
+  --color-huobi-bg: #ffffff;
+  --color-huobi-card: #f8f9fa;
+  --color-huobi-border: #e5e7eb;
+  --color-huobi-text: #111827;
+  --color-huobi-muted: #6b7280;
+  --color-huobi-up: #00b464;
+  --color-huobi-down: #f84960;
+}
+
+@layer base {
+  body {
+    @apply bg-huobi-bg text-huobi-text font-sans antialiased;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-huobi-border rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-huobi-muted;
+}
+
