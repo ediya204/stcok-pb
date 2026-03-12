@@ -25,12 +25,10 @@ import {
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  CartesianGrid 
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
 } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -49,252 +47,313 @@ import {
 import { alltickService, type AlltickTicker } from './services/alltickService';
 
 const DashboardView = () => {
-  const balanceData = useMemo(() => [
-    { name: '02.00', value: 13500 },
-    { name: '04.00', value: 13200 },
-    { name: '06.00', value: 13800 },
-    { name: '08.00', value: 13400 },
-    { name: '10.00', value: 13900 },
-    { name: '12.00', value: 13839 },
-  ], []);
+  const account = useMemo(() => {
+    const lastUpdated = new Date();
+    return {
+      name: 'James Bond',
+      accountType: 'Securities',
+      risk: 'Medium',
+      baseCurrency: 'HKD',
+      lastUpdated,
+    };
+  }, []);
 
-  const btcData = useMemo(() => {
-    const data = [];
-    let base = 42800;
-    for (let i = 0; i < 24; i++) {
-      base += (Math.random() - 0.45) * 200;
-      data.push({
-        time: `${i.toString().padStart(2, '0')}:00`,
-        price: base,
-        volume: Math.floor(Math.random() * 5000) + 2000
-      });
-    }
-    return data;
+  const kpis = useMemo(() => {
+    const totalNetAssets = 1_436_200;
+    const availableCash = 1_245_000;
+    const withdrawableCash = 1_120_000;
+    const frozenCash = 150_000;
+    const pendingCash = 41_200;
+    const holdingsMarketValue = totalNetAssets - availableCash;
+    const holdingsPositions = 8;
+    const holdingsWeight = (holdingsMarketValue / totalNetAssets) * 100;
+    const dayChange = 34_560;
+    const dayChangePct = 2.47;
+    const monthChangePct = 6.12;
+
+    return {
+      totalNetAssets,
+      dayChange,
+      dayChangePct,
+      monthChangePct,
+      availableCash,
+      withdrawableCash,
+      frozenCash,
+      pendingCash,
+      holdingsMarketValue,
+      holdingsPositions,
+      holdingsWeight,
+      pendingInstructions: 3,
+      frozenShares: 200,
+    };
+  }, []);
+
+  const assetAllocation = useMemo(() => {
+    const items = [
+      { key: 'Cash', label: 'Cash', value: 1_245_000, pct: 86.7, dayPct: 0.12, color: '#0052ff' },
+      { key: 'HK', label: 'Hong Kong Stocks', value: 160_800, pct: 11.2, dayPct: 1.85, color: '#10B981' },
+      { key: 'US', label: 'US Stocks', value: 21_500, pct: 1.5, dayPct: -0.42, color: '#6366F1' },
+      { key: 'Funds', label: 'Funds / Others', value: 8_900, pct: 0.6, dayPct: 0.05, color: '#F59E0B' },
+    ];
+    return items;
+  }, []);
+
+  const cashByCurrency = useMemo(() => {
+    return [
+      { ccy: 'HKD', available: 980_000, frozen: 120_000, pending: 18_000 },
+      { ccy: 'USD', available: 210_000, frozen: 25_000, pending: 19_800 },
+      { ccy: 'CNY', available: 55_000, frozen: 5_000, pending: 3_400 },
+    ];
+  }, []);
+
+  const holdings = useMemo(() => {
+    const rows = [
+      { name: 'Tencent', symbol: '00700.HK', qty: 1000, avgCost: 375.2, mktPrice: 382.4, dailyPct: 1.38 },
+      { name: 'Alibaba', symbol: '09988.HK', qty: 2400, avgCost: 70.6, mktPrice: 72.15, dailyPct: -1.64 },
+      { name: 'Meituan', symbol: '03690.HK', qty: 800, avgCost: 112.3, mktPrice: 115.8, dailyPct: 2.03 },
+      { name: 'BYD', symbol: '01211.HK', qty: 500, avgCost: 208.1, mktPrice: 215.6, dailyPct: 2.28 },
+      { name: 'HSBC', symbol: '00005.HK', qty: 2000, avgCost: 61.8, mktPrice: 62.35, dailyPct: 0.24 },
+    ];
+    const withValues = rows.map(r => {
+      const marketValue = r.qty * r.mktPrice;
+      const pnl = (r.mktPrice - r.avgCost) * r.qty;
+      return { ...r, marketValue, pnl };
+    });
+    const total = withValues.reduce((acc, r) => acc + r.marketValue, 0) || 1;
+    return withValues.map(r => ({ ...r, weightPct: (r.marketValue / total) * 100 }));
+  }, []);
+
+  const cashMovements = useMemo(() => {
+    return [
+      { time: 'Today 10:42', type: 'Settlement', ccy: 'HKD', amount: -18_400, status: 'Completed' },
+      { time: 'Today 09:15', type: 'Fee', ccy: 'HKD', amount: -120, status: 'Completed' },
+      { time: 'Yesterday 16:30', type: 'Dividend', ccy: 'HKD', amount: 2_600, status: 'Completed' },
+      { time: 'Yesterday 11:05', type: 'Deposit', ccy: 'USD', amount: 5_000, status: 'Completed' },
+      { time: 'Mar 10 14:12', type: 'Withdrawal', ccy: 'HKD', amount: -10_000, status: 'Under review' },
+    ];
+  }, []);
+
+  const alerts = useMemo(() => {
+    return [
+      { title: 'Transfer-out pending broker review', meta: 'Ref: REF482913 · 1 item', severity: 'info' as const },
+      { title: 'Withdrawal under review', meta: 'HKD 10,000 · ETA 1–2 business days', severity: 'warn' as const },
+      { title: 'Settlement pending', meta: '2 trades · T+2', severity: 'info' as const },
+      { title: 'Risk disclosure confirmation required', meta: 'Last updated 30 days ago', severity: 'critical' as const },
+    ];
+  }, []);
+
+  const performance = useMemo(() => {
+    return [
+      { label: '1D', value: '+2.47%', tone: 'up' as const },
+      { label: '7D', value: '+1.12%', tone: 'up' as const },
+      { label: '1M', value: '+3.80%', tone: 'up' as const },
+      { label: 'YTD', value: '-0.45%', tone: 'down' as const },
+    ];
+  }, []);
+
+  const risk = useMemo(() => {
+    return {
+      largestPositionPct: 18.2,
+      top3Pct: 44.8,
+      lossMakingPositions: 2,
+      restrictedSecurities: 1,
+    };
   }, []);
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#F3F4F6] p-4 md:p-8 custom-scrollbar">
       <div className="max-w-[1600px] mx-auto flex flex-col gap-8">
-        
-
-
-        {/* Hero Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black text-huobi-blue uppercase tracking-[0.2em] mb-2">Overview</span>
-            <h1 className="text-5xl md:text-7xl font-bold text-huobi-text tracking-tighter leading-[0.85]">
-              Market <br />
-              <span className="text-huobi-muted/40">Dashboard</span>
+        {/* Hero Summary */}
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-black text-huobi-blue uppercase tracking-[0.2em]">Overview</span>
+            <h1 className="text-4xl md:text-6xl font-bold text-huobi-text tracking-tighter leading-[0.95]">
+              Account <span className="text-huobi-muted/40">Overview</span>
             </h1>
+            <p className="text-sm text-huobi-muted max-w-2xl leading-relaxed">
+              Real-time account snapshot across holdings, cash, pending settlements and recent activities.
+            </p>
           </div>
-          <div className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-huobi-border shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-            <div className="w-12 h-12 rounded-xl bg-huobi-blue/10 flex items-center justify-center overflow-hidden border border-huobi-blue/20">
-              <img src="https://picsum.photos/seed/user/100/100" alt="User" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+
+          <div className="bg-white p-4 md:p-5 rounded-2xl border border-huobi-border shadow-sm flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="w-11 h-11 rounded-xl bg-huobi-blue/10 flex items-center justify-center overflow-hidden border border-huobi-blue/20 shrink-0">
+                <img src="https://picsum.photos/seed/user/100/100" alt="User" className="w-full h-full object-cover" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black text-huobi-text truncate">{account.name}</span>
+                  <span className="px-2 py-0.5 bg-gray-100 text-huobi-muted text-[10px] font-bold rounded uppercase shrink-0">
+                    {account.accountType}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                  <span className="text-[10px] text-huobi-muted font-bold uppercase tracking-wider">Risk: <span className="text-huobi-text">{account.risk}</span></span>
+                  <span className="text-[10px] text-huobi-muted font-bold uppercase tracking-wider">Base: <span className="text-huobi-text">{account.baseCurrency}</span></span>
+                  <span className="text-[10px] text-huobi-muted font-bold uppercase tracking-wider">Updated: <span className="text-huobi-text">{account.lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></span>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-black text-huobi-text">James Bond</span>
-              <span className="text-[11px] text-huobi-muted">Securities Account</span>
+            <button className="p-2 bg-gray-50 rounded-xl border border-huobi-border hover:bg-huobi-blue/5 transition-colors shrink-0">
+              <ChevronRight className="w-4 h-4 text-huobi-muted" />
+            </button>
+          </div>
+        </div>
+
+        {/* KPI Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+          <div className="bg-white p-6 rounded-[1.75rem] border border-huobi-border shadow-sm flex flex-col gap-4 relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-huobi-blue/5 rounded-full blur-2xl" />
+            <div className="flex items-center justify-between relative z-10">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-huobi-blue/10 flex items-center justify-center">
+                  <LayoutGrid className="w-4 h-4 text-huobi-blue" />
+                </div>
+                <span className="text-xs font-black text-huobi-muted uppercase tracking-widest">Total Net Assets</span>
+              </div>
+              <div className="flex items-center gap-1 px-2 py-1 bg-huobi-up/10 text-huobi-up rounded-full text-[10px] font-black">
+                <TrendingUp className="w-3 h-3" />
+                +{kpis.dayChangePct.toFixed(2)}%
+              </div>
             </div>
-            <div className="ml-4 p-2 bg-gray-50 rounded-lg group-hover:bg-huobi-blue/5 transition-colors">
-              <ChevronRight className="w-4 h-4 text-huobi-muted group-hover:text-huobi-blue" />
+            <div className="relative z-10">
+              <div className="text-3xl font-black text-huobi-text tracking-tighter">{kpis.totalNetAssets.toLocaleString()} HKD</div>
+              <div className="mt-1 text-[11px] text-huobi-muted font-bold uppercase tracking-wider">
+                Day: <span className="text-huobi-text">+{kpis.dayChange.toLocaleString()} HKD</span> · Month: <span className="text-huobi-text">+{kpis.monthChangePct.toFixed(2)}%</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-[1.75rem] border border-huobi-border shadow-sm flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-huobi-up/10 flex items-center justify-center">
+                  <Globe className="w-4 h-4 text-huobi-up" />
+                </div>
+                <span className="text-xs font-black text-huobi-muted uppercase tracking-widest">Available Cash</span>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-huobi-muted">HKD</span>
+            </div>
+            <div>
+              <div className="text-3xl font-black text-huobi-text tracking-tighter">{kpis.availableCash.toLocaleString()}</div>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                <div className="p-3 bg-gray-50 rounded-xl border border-huobi-border/50">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-huobi-muted">Withdrawable</div>
+                  <div className="text-xs font-black text-huobi-text mt-1">{kpis.withdrawableCash.toLocaleString()}</div>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-xl border border-huobi-border/50">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-huobi-muted">Frozen</div>
+                  <div className="text-xs font-black text-huobi-down mt-1">{kpis.frozenCash.toLocaleString()}</div>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-xl border border-huobi-border/50">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-huobi-muted">Pending</div>
+                  <div className="text-xs font-black text-huobi-blue mt-1">{kpis.pendingCash.toLocaleString()}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-[1.75rem] border border-huobi-border shadow-sm flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-huobi-blue/10 flex items-center justify-center">
+                  <Star className="w-4 h-4 text-huobi-blue" />
+                </div>
+                <span className="text-xs font-black text-huobi-muted uppercase tracking-widest">Holdings Market Value</span>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-huobi-muted">{kpis.holdingsPositions} positions</span>
+            </div>
+            <div>
+              <div className="text-3xl font-black text-huobi-text tracking-tighter">{kpis.holdingsMarketValue.toLocaleString()} HKD</div>
+              <div className="mt-1 text-[11px] text-huobi-muted font-bold uppercase tracking-wider">
+                Weight: <span className="text-huobi-text">{kpis.holdingsWeight.toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-[1.75rem] border border-huobi-border shadow-sm flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-huobi-down/10 flex items-center justify-center">
+                  <AlertCircle className="w-4 h-4 text-huobi-down" />
+                </div>
+                <span className="text-xs font-black text-huobi-muted uppercase tracking-widest">Pending / On Hold</span>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-huobi-muted">{kpis.pendingInstructions} items</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-4 bg-gray-50 rounded-2xl border border-huobi-border/50">
+                <div className="text-[9px] font-black uppercase tracking-widest text-huobi-muted">Pending settlement</div>
+                <div className="text-sm font-black text-huobi-blue mt-1">{kpis.pendingCash.toLocaleString()} HKD</div>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-2xl border border-huobi-border/50">
+                <div className="text-[9px] font-black uppercase tracking-widest text-huobi-muted">Frozen shares</div>
+                <div className="text-sm font-black text-huobi-down mt-1">{kpis.frozenShares.toLocaleString()} Shares</div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* Left Column - Balance & Portfolio */}
-          <div className="lg:col-span-8 flex flex-col gap-8">
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Total Balance Card */}
-              <div className="bg-white p-8 rounded-[2rem] border border-huobi-border shadow-sm flex flex-col gap-6 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-huobi-blue/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-huobi-blue/10 transition-colors" />
-                <div className="flex items-center justify-between relative z-10">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-huobi-blue/10 flex items-center justify-center">
-                      <LayoutGrid className="w-4 h-4 text-huobi-blue" />
-                    </div>
-                    <span className="text-sm font-bold text-huobi-muted">Total Balance</span>
-                  </div>
-                  <button className="p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                    <ArrowUpRight className="w-4 h-4 text-huobi-muted" />
-                  </button>
-                </div>
-                <div className="flex flex-col gap-1 relative z-10">
-                  <span className="text-5xl font-bold text-huobi-text tracking-tighter">$13,839.82</span>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 px-2 py-0.5 bg-huobi-up/10 text-huobi-up rounded-full text-[10px] font-black">
-                      <TrendingUp className="w-3 h-3" />
-                      +2.72%
-                    </div>
-                    <span className="text-[10px] text-huobi-muted font-bold uppercase tracking-wider">vs last month</span>
-                  </div>
-                </div>
-                <div className="h-32 w-full mt-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={balanceData}>
-                      <defs>
-                        <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#0052ff" stopOpacity={0.1}/>
-                          <stop offset="95%" stopColor="#0052ff" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <Area type="monotone" dataKey="value" stroke="#0052ff" fill="url(#colorBalance)" strokeWidth={3} dot={false} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+        {/* Allocation + Cash Breakdown */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <div className="xl:col-span-8 bg-white p-6 rounded-[2rem] border border-huobi-border shadow-sm">
+            <div className="flex items-end justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg font-black text-huobi-text tracking-tight">Asset Allocation</h3>
+                <p className="text-[11px] text-huobi-muted">Cash, equities and funds distribution with daily movement.</p>
               </div>
-
-              {/* Portfolio Breakdown Card */}
-              <div className="bg-white p-8 rounded-[2rem] border border-huobi-border shadow-sm flex flex-col gap-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-huobi-up/10 flex items-center justify-center">
-                      <Star className="w-4 h-4 text-huobi-up" />
-                    </div>
-                    <span className="text-sm font-bold text-huobi-muted">Portfolio (3)</span>
-                  </div>
-                  <button className="p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                    <ArrowUpRight className="w-4 h-4 text-huobi-muted" />
-                  </button>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-5xl font-bold text-huobi-text tracking-tighter">$8,989.80</span>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 px-2 py-0.5 bg-huobi-down/10 text-huobi-down rounded-full text-[10px] font-black">
-                      <TrendingDown className="w-3 h-3" />
-                      -0.72%
-                    </div>
-                    <span className="text-[10px] text-huobi-muted font-bold uppercase tracking-wider">24h change</span>
-                  </div>
-                </div>
-                
-                <div className="flex h-3 rounded-full overflow-hidden mt-2 bg-gray-100">
-                  <div className="h-full bg-[#F59E0B]" style={{ width: '45%' }} />
-                  <div className="h-full bg-[#10B981]" style={{ width: '25%' }} />
-                  <div className="h-full bg-[#3B82F6]" style={{ width: '15%' }} />
-                  <div className="h-full bg-[#EF4444]" style={{ width: '10%' }} />
-                  <div className="h-full bg-[#6366F1]" style={{ width: '5%' }} />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-2">
-                  {[
-                    { name: 'Bitcoin', symbol: 'BTC', price: '$4,989.80', change: '+1.59%', color: '#F59E0B' },
-                    { name: 'Tether', symbol: 'USDT', price: '$1,300.00', change: '-2.52%', color: '#10B981' },
-                  ].map((asset, idx) => (
-                    <div key={idx} className="flex flex-col gap-1 p-3 bg-gray-50 rounded-xl border border-huobi-border/50">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-huobi-text uppercase">{asset.symbol}</span>
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: asset.color }} />
-                      </div>
-                      <span className="text-sm font-bold text-huobi-text">{asset.price}</span>
-                      <span className={cn("text-[10px] font-bold", asset.change.startsWith('+') ? "text-huobi-up" : "text-huobi-down")}>{asset.change}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <button className="text-[10px] font-black uppercase tracking-widest text-huobi-blue hover:underline">View details</button>
             </div>
 
-            {/* Main Chart Section */}
-            <div className="bg-white p-8 rounded-[2.5rem] border border-huobi-border shadow-sm flex flex-col gap-8">
-              <div className="flex flex-wrap items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[#F59E0B] flex items-center justify-center p-3 shadow-lg shadow-orange-200">
-                    <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.png" alt="BTC" className="w-full h-full object-contain brightness-0 invert" />
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-2xl font-black text-huobi-text tracking-tight">Bitcoin</h2>
-                      <span className="px-2 py-0.5 bg-gray-100 text-huobi-muted text-[10px] font-bold rounded uppercase">BTC</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl font-bold text-huobi-text tracking-tighter">$42,715.35</span>
-                      <div className="flex items-center gap-1 px-2 py-0.5 bg-huobi-down/10 text-huobi-down rounded-full text-[10px] font-black uppercase">
-                        <TrendingDown className="w-3 h-3" />
-                        0.17%
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="px-6 py-3 bg-huobi-text text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200">Trade Now</button>
-                  <button className="p-3 bg-gray-50 border border-huobi-border rounded-2xl text-huobi-muted hover:text-huobi-text transition-all">
-                    <Star className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between border-b border-huobi-border pb-6">
-                <div className="flex bg-gray-100 p-1 rounded-xl">
-                  {['Price', 'Market Cap', 'Volume'].map(tab => (
-                    <button key={tab} className={cn("px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all", tab === 'Price' ? "bg-white text-huobi-text shadow-sm border border-huobi-border" : "text-huobi-muted hover:text-huobi-text")}>
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex bg-gray-100 p-1 rounded-xl">
-                    {['1D', '7D', '1M', '1Y', 'ALL'].map(tf => (
-                      <button key={tf} className={cn("px-4 py-2 text-[10px] font-black rounded-lg transition-all", tf === '1D' ? "bg-white text-huobi-text shadow-sm border border-huobi-border" : "text-huobi-muted hover:text-huobi-text")}>
-                        {tf}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="h-[400px] w-full relative">
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+              <div className="md:col-span-5 h-56">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={btcData}>
-                    <defs>
-                      <linearGradient id="colorBtc" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                    <XAxis dataKey="time" stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} dy={10} />
-                    <YAxis domain={['auto', 'auto']} stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} orientation="right" dx={10} />
-                    <Tooltip 
+                  <PieChart>
+                    <Tooltip
                       content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="bg-huobi-text text-white p-4 rounded-2xl shadow-2xl border border-gray-800 backdrop-blur-xl bg-opacity-90">
-                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Jan 23, 2024</p>
-                              <div className="flex flex-col gap-2">
-                                <div className="flex items-center justify-between gap-8">
-                                  <span className="text-[10px] text-gray-400 font-bold uppercase">Price</span>
-                                  <span className="text-sm font-black text-huobi-up">${payload[0].value?.toLocaleString()}</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-8">
-                                  <span className="text-[10px] text-gray-400 font-bold uppercase">Volume</span>
-                                  <span className="text-sm font-black">$17.92B</span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
+                        if (!active || !payload?.length) return null;
+                        const p = payload[0]?.payload as any;
+                        return (
+                          <div className="bg-huobi-text text-white p-3 rounded-2xl shadow-2xl border border-gray-800 backdrop-blur-xl bg-opacity-90">
+                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{p.label}</div>
+                            <div className="mt-1 text-sm font-black">{p.value.toLocaleString()} HKD</div>
+                            <div className="mt-1 text-[10px] font-bold text-gray-300 uppercase tracking-wider">{p.pct.toFixed(1)}%</div>
+                          </div>
+                        );
                       }}
                     />
-                    <Area type="monotone" dataKey="price" stroke="#10B981" fill="url(#colorBtc)" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#10B981', stroke: '#fff', strokeWidth: 3 }} />
-                  </AreaChart>
+                    <Pie
+                      data={assetAllocation}
+                      dataKey="value"
+                      nameKey="label"
+                      innerRadius={58}
+                      outerRadius={86}
+                      paddingAngle={3}
+                      stroke="transparent"
+                    >
+                      {assetAllocation.map((entry) => (
+                        <Cell key={entry.key} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
                 </ResponsiveContainer>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                  { label: 'Market Cap', value: '$13,441.07M', change: '+2.4%' },
-                  { label: 'Volume (24h)', value: '$3,441.07M', change: '-1.2%' },
-                  { label: 'Circulating Supply', value: '19.6M BTC', change: '0.0%' },
-                ].map((stat, idx) => (
-                  <div key={idx} className="bg-gray-50 p-5 rounded-[1.5rem] border border-huobi-border flex flex-col gap-1">
-                    <span className="text-[10px] text-huobi-muted font-black uppercase tracking-widest">{stat.label}</span>
+              <div className="md:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {assetAllocation.map(item => (
+                  <div key={item.key} className="p-4 bg-gray-50 rounded-2xl border border-huobi-border/50 flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold text-huobi-text">{stat.value}</span>
-                      <span className={cn("text-[10px] font-bold", stat.change.startsWith('+') ? "text-huobi-up" : stat.change.startsWith('-') ? "text-huobi-down" : "text-huobi-muted")}>{stat.change}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span className="text-[11px] font-black text-huobi-text truncate">{item.label}</span>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-huobi-muted">{item.pct.toFixed(1)}%</span>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-sm font-black text-huobi-text">{item.value.toLocaleString()} HKD</span>
+                      <span className={cn("text-[10px] font-black uppercase tracking-widest", item.dayPct >= 0 ? "text-huobi-up" : "text-huobi-down")}>
+                        {item.dayPct >= 0 ? '+' : ''}{item.dayPct.toFixed(2)}%
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -302,93 +361,234 @@ const DashboardView = () => {
             </div>
           </div>
 
-          {/* Right Column - Prices & Converter */}
-          <div className="lg:col-span-4 flex flex-col gap-8">
-            
-            {/* Today's Prices List */}
-            <div className="bg-white p-8 rounded-[2.5rem] border border-huobi-border shadow-sm flex flex-col gap-6">
+          <div className="xl:col-span-4 bg-white p-6 rounded-[2rem] border border-huobi-border shadow-sm">
+            <div className="flex items-end justify-between gap-4">
               <div className="flex flex-col gap-1">
-                <h3 className="text-xl font-black text-huobi-text tracking-tight">Market Prices</h3>
-                <p className="text-[11px] text-huobi-muted leading-relaxed">Global market cap is <span className="text-huobi-text font-bold">$1.67T</span>, up <span className="text-huobi-up font-bold">2.35%</span> today.</p>
+                <h3 className="text-lg font-black text-huobi-text tracking-tight">Cash Breakdown</h3>
+                <p className="text-[11px] text-huobi-muted">By currency: available / frozen / pending.</p>
               </div>
-              <div className="flex flex-col gap-2">
-                {[
-                  { name: 'Bitcoin', symbol: 'BTC', price: '$42,715.35', change: '-0.17%', icon: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png' },
-                  { name: 'Ethereum', symbol: 'ETH', price: '$2,310.29', change: '-0.05%', icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.png' },
-                  { name: 'Solana', symbol: 'SOL', price: '$95.31', change: '-0.2%', icon: 'https://cryptologos.cc/logos/solana-sol-logo.png' },
-                  { name: 'Tether', symbol: 'USDT', price: '$1.00', change: '0.00%', icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png' },
-                  { name: 'BNB', symbol: 'BNB', price: '$300.85', change: '-0.20%', icon: 'https://cryptologos.cc/logos/bnb-bnb-logo.png' },
-                  { name: 'Avalanche', symbol: 'AVAX', price: '$34.16', change: '+0.15%', icon: 'https://cryptologos.cc/logos/avalanche-avax-logo.png' },
-                ].map((coin, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 rounded-2xl hover:bg-gray-50 transition-all cursor-pointer group border border-transparent hover:border-huobi-border">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center p-2 border border-huobi-border group-hover:bg-white transition-colors">
-                        <img src={coin.icon} alt={coin.name} className="w-full h-full object-contain" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-huobi-muted">CCY</span>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-4">
+              {cashByCurrency.map(row => {
+                const total = row.available + row.frozen + row.pending || 1;
+                return (
+                  <div key={row.ccy} className="p-4 bg-gray-50 rounded-2xl border border-huobi-border/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-black text-huobi-text">{row.ccy}</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-huobi-muted">{total.toLocaleString()}</span>
+                    </div>
+                    <div className="mt-3 h-2 rounded-full overflow-hidden bg-white border border-huobi-border">
+                      <div className="h-full bg-huobi-up" style={{ width: `${(row.available / total) * 100}%` }} />
+                      <div className="h-full bg-huobi-down" style={{ width: `${(row.frozen / total) * 100}%` }} />
+                      <div className="h-full bg-huobi-blue" style={{ width: `${(row.pending / total) * 100}%` }} />
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-[10px] font-bold">
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-huobi-up" />
+                        <span className="text-huobi-muted">Avail</span>
+                        <span className="text-huobi-text ml-auto">{row.available.toLocaleString()}</span>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-huobi-text">{coin.name}</span>
-                        <span className="text-[10px] text-huobi-muted font-black uppercase tracking-widest">{coin.symbol}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-huobi-down" />
+                        <span className="text-huobi-muted">Frozen</span>
+                        <span className="text-huobi-text ml-auto">{row.frozen.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-huobi-blue" />
+                        <span className="text-huobi-muted">Pending</span>
+                        <span className="text-huobi-text ml-auto">{row.pending.toLocaleString()}</span>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end">
-                      <span className="text-sm font-bold text-huobi-text">{coin.price}</span>
-                      <span className={cn("text-[10px] font-bold", coin.change.startsWith('+') ? "text-huobi-up" : coin.change.startsWith('-') ? "text-huobi-down" : "text-huobi-muted")}>{coin.change}</span>
-                    </div>
                   </div>
-                ))}
-              </div>
-              <button className="w-full py-4 bg-gray-50 text-huobi-muted text-[10px] font-black uppercase tracking-widest rounded-2xl border border-huobi-border hover:bg-gray-100 hover:text-huobi-text transition-all">View All Assets</button>
+                );
+              })}
             </div>
-
-            {/* Converter Card */}
-            <div className="bg-huobi-text p-8 rounded-[2.5rem] shadow-2xl shadow-gray-400 flex flex-col gap-6 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-huobi-blue/20 to-transparent pointer-events-none" />
-              <h4 className="text-lg font-black text-white tracking-tight relative z-10">Quick Converter</h4>
-              <div className="flex flex-col gap-4 relative z-10">
-                <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 flex flex-col gap-2">
-                  <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">From</span>
-                  <div className="flex items-center justify-between">
-                    <input type="text" defaultValue="1" className="bg-transparent border-none outline-none text-2xl font-bold text-white w-24" />
-                    <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/10">
-                      <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.png" alt="BTC" className="w-4 h-4" />
-                      <span className="text-xs font-bold text-white">BTC</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-center -my-6 relative z-20">
-                  <button className="w-10 h-10 bg-huobi-blue text-white rounded-full flex items-center justify-center shadow-xl border-4 border-huobi-text hover:scale-110 transition-transform">
-                    <ArrowRightLeft className="w-4 h-4 rotate-90" />
-                  </button>
-                </div>
-                <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 flex flex-col gap-2">
-                  <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">To</span>
-                  <div className="flex items-center justify-between">
-                    <input type="text" defaultValue="42,715.35" className="bg-transparent border-none outline-none text-2xl font-bold text-white w-32" />
-                    <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/10">
-                      <Globe className="w-4 h-4 text-white" />
-                      <span className="text-xs font-bold text-white">USD</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <button className="w-full py-4 bg-huobi-blue text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-huobi-blue/20 hover:bg-huobi-blue/90 transition-all relative z-10">Convert Now</button>
-            </div>
-
-            {/* Securities Notice */}
-            <div className="bg-huobi-up/5 border border-huobi-up/20 p-6 rounded-[2rem] flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-huobi-up" />
-                <span className="text-[10px] font-black text-huobi-up uppercase tracking-widest">Securities Service</span>
-              </div>
-              <p className="text-[11px] text-huobi-muted leading-relaxed">
-                Your account is currently under securities tier. Enjoy lower fees and higher withdrawal limits. 
-                <button className="text-huobi-up font-bold ml-1 hover:underline">Learn more</button>
-              </p>
-            </div>
-
           </div>
         </div>
 
+        {/* Holdings Table */}
+        <div className="bg-white p-6 rounded-[2rem] border border-huobi-border shadow-sm">
+          <div className="flex items-end justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-lg font-black text-huobi-text tracking-tight">Top Holdings</h3>
+              <p className="text-[11px] text-huobi-muted">Key positions summary for quick portfolio monitoring.</p>
+            </div>
+            <button className="text-[10px] font-black uppercase tracking-widest text-huobi-blue hover:underline">View all positions</button>
+          </div>
+
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full min-w-[980px] text-left border-collapse">
+              <thead>
+                <tr className="text-huobi-muted border-b border-huobi-border/60">
+                  {['Asset', 'Symbol', 'Quantity', 'Avg Cost', 'Market', 'Mkt Value', 'Unreal. P/L', 'Daily', 'Weight'].map(h => (
+                    <th key={h} className="py-3 px-2 text-[10px] font-black uppercase tracking-widest">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-huobi-border/40">
+                {holdings.map(r => (
+                  <tr key={r.symbol} className="hover:bg-gray-50/60 transition-colors">
+                    <td className="py-3 px-2 font-bold text-huobi-text">
+                      {r.name}
+                    </td>
+                    <td className="py-3 px-2 text-[11px] font-black text-huobi-muted">{r.symbol}</td>
+                    <td className="py-3 px-2 text-[11px] font-mono font-bold text-huobi-text">{r.qty.toLocaleString()}</td>
+                    <td className="py-3 px-2 text-[11px] font-mono text-huobi-muted">{r.avgCost.toFixed(2)}</td>
+                    <td className="py-3 px-2 text-[11px] font-mono font-bold text-huobi-text">{r.mktPrice.toFixed(2)}</td>
+                    <td className="py-3 px-2 text-[11px] font-mono font-bold text-huobi-text">{r.marketValue.toLocaleString()}</td>
+                    <td className={cn("py-3 px-2 text-[11px] font-mono font-black", r.pnl >= 0 ? "text-huobi-up" : "text-huobi-down")}>
+                      {r.pnl >= 0 ? '+' : ''}{r.pnl.toLocaleString()}
+                    </td>
+                    <td className={cn("py-3 px-2 text-[11px] font-black", r.dailyPct >= 0 ? "text-huobi-up" : "text-huobi-down")}>
+                      {r.dailyPct >= 0 ? '+' : ''}{r.dailyPct.toFixed(2)}%
+                    </td>
+                    <td className="py-3 px-2 text-[11px] font-black text-huobi-text">{r.weightPct.toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Cash Movements + Alerts */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <div className="xl:col-span-7 bg-white p-6 rounded-[2rem] border border-huobi-border shadow-sm">
+            <div className="flex items-end justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg font-black text-huobi-text tracking-tight">Recent Cash Movements</h3>
+                <p className="text-[11px] text-huobi-muted">Deposits, withdrawals, fees and settlements.</p>
+              </div>
+              <button className="text-[10px] font-black uppercase tracking-widest text-huobi-blue hover:underline">View ledger</button>
+            </div>
+
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full min-w-[720px] text-left border-collapse">
+                <thead>
+                  <tr className="text-huobi-muted border-b border-huobi-border/60">
+                    {['Time', 'Type', 'Currency', 'Amount', 'Status'].map(h => (
+                      <th key={h} className="py-3 px-2 text-[10px] font-black uppercase tracking-widest">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-huobi-border/40">
+                  {cashMovements.map((m, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="py-3 px-2 text-[11px] font-bold text-huobi-muted">{m.time}</td>
+                      <td className="py-3 px-2 text-[11px] font-black text-huobi-text">{m.type}</td>
+                      <td className="py-3 px-2 text-[11px] font-black text-huobi-muted">{m.ccy}</td>
+                      <td className={cn("py-3 px-2 text-[11px] font-mono font-black", m.amount >= 0 ? "text-huobi-up" : "text-huobi-down")}>
+                        {m.amount >= 0 ? '+' : ''}{m.amount.toLocaleString()}
+                      </td>
+                      <td className="py-3 px-2">
+                        <span className={cn(
+                          "px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest",
+                          m.status === 'Completed' ? "bg-huobi-up/10 text-huobi-up" : "bg-huobi-blue/10 text-huobi-blue"
+                        )}>
+                          {m.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="xl:col-span-5 bg-white p-6 rounded-[2rem] border border-huobi-border shadow-sm">
+            <div className="flex items-end justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg font-black text-huobi-text tracking-tight">Pending Activities & Alerts</h3>
+                <p className="text-[11px] text-huobi-muted">Items that may require attention.</p>
+              </div>
+              <button className="text-[10px] font-black uppercase tracking-widest text-huobi-blue hover:underline">Open queue</button>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3">
+              {alerts.map((a, idx) => (
+                <div key={idx} className="p-4 bg-gray-50 rounded-2xl border border-huobi-border/50 flex items-start gap-3">
+                  <div className={cn(
+                    "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+                    a.severity === 'critical' ? "bg-huobi-down/10" : a.severity === 'warn' ? "bg-[#F59E0B]/10" : "bg-huobi-blue/10"
+                  )}>
+                    <AlertCircle className={cn(
+                      "w-4 h-4",
+                      a.severity === 'critical' ? "text-huobi-down" : a.severity === 'warn' ? "text-[#F59E0B]" : "text-huobi-blue"
+                    )} />
+                  </div>
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <div className="text-sm font-black text-huobi-text">{a.title}</div>
+                    <div className="text-[11px] text-huobi-muted">{a.meta}</div>
+                  </div>
+                  <button className="ml-auto p-2 rounded-xl hover:bg-white transition-colors border border-transparent hover:border-huobi-border">
+                    <ChevronRight className="w-4 h-4 text-huobi-muted" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Performance + Risk */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <div className="xl:col-span-7 bg-white p-6 rounded-[2rem] border border-huobi-border shadow-sm">
+            <div className="flex items-end justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg font-black text-huobi-text tracking-tight">Performance Snapshot</h3>
+                <p className="text-[11px] text-huobi-muted">Compact view across key periods.</p>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-huobi-muted">
+                <Clock className="w-4 h-4" />
+                Updated {account.lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {performance.map(p => (
+                <div key={p.label} className="p-5 bg-gray-50 rounded-2xl border border-huobi-border/50">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-huobi-muted">{p.label}</div>
+                  <div className={cn("mt-2 text-xl font-black tracking-tight", p.tone === 'up' ? "text-huobi-up" : "text-huobi-down")}>
+                    {p.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="xl:col-span-5 bg-white p-6 rounded-[2rem] border border-huobi-border shadow-sm">
+            <div className="flex items-end justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg font-black text-huobi-text tracking-tight">Risk / Exposure Summary</h3>
+                <p className="text-[11px] text-huobi-muted">Concentration and loss exposure signals.</p>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-huobi-muted">Summary</span>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-5 bg-gray-50 rounded-2xl border border-huobi-border/50">
+                <div className="text-[10px] font-black uppercase tracking-widest text-huobi-muted">Largest position</div>
+                <div className="mt-2 text-2xl font-black text-huobi-text">{risk.largestPositionPct.toFixed(1)}%</div>
+                <div className="mt-1 text-[11px] text-huobi-muted">of portfolio market value</div>
+              </div>
+              <div className="p-5 bg-gray-50 rounded-2xl border border-huobi-border/50">
+                <div className="text-[10px] font-black uppercase tracking-widest text-huobi-muted">Top 3 concentration</div>
+                <div className="mt-2 text-2xl font-black text-huobi-text">{risk.top3Pct.toFixed(1)}%</div>
+                <div className="mt-1 text-[11px] text-huobi-muted">combined weight</div>
+              </div>
+              <div className="p-5 bg-gray-50 rounded-2xl border border-huobi-border/50">
+                <div className="text-[10px] font-black uppercase tracking-widest text-huobi-muted">Loss-making positions</div>
+                <div className="mt-2 text-2xl font-black text-huobi-down">{risk.lossMakingPositions}</div>
+                <div className="mt-1 text-[11px] text-huobi-muted">unrealized loss</div>
+              </div>
+              <div className="p-5 bg-gray-50 rounded-2xl border border-huobi-border/50">
+                <div className="text-[10px] font-black uppercase tracking-widest text-huobi-muted">Restricted / suspended</div>
+                <div className="mt-2 text-2xl font-black text-huobi-blue">{risk.restrictedSecurities}</div>
+                <div className="mt-1 text-[11px] text-huobi-muted">requires attention</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
