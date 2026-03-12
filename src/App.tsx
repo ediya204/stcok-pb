@@ -5,6 +5,8 @@ import {
   Search, 
   Bell, 
   User, 
+  Lock,
+  ShieldCheck,
   LayoutGrid, 
   Clock, 
   ChevronUp, 
@@ -45,6 +47,158 @@ import {
   type IncomingTransferStatus
 } from './constants';
 import { alltickService, type AlltickTicker } from './services/alltickService';
+
+const AUTH_STORAGE_KEY = 'vcsecurities:authed';
+
+const LoginView = ({ onLogin }: { onLogin: () => void }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setError(null);
+    if (!username.trim() || !password) {
+      setError('请输入用户名与密码');
+      return;
+    }
+    if (remember) {
+      localStorage.setItem(AUTH_STORAGE_KEY, 'true');
+    } else {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+    onLogin();
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F3F4F6] flex items-center justify-center p-4 md:p-8">
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Brand / Context */}
+        <div className="lg:col-span-7 bg-huobi-text rounded-[2.5rem] shadow-2xl shadow-gray-400 overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-huobi-blue/25 via-transparent to-transparent" />
+          <div className="relative p-8 md:p-10 h-full flex flex-col justify-between gap-10">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center backdrop-blur-md">
+                <TrendingUp className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <div className="text-white text-xl md:text-2xl font-black tracking-tight">VC Securities</div>
+                <div className="text-white/60 text-[10px] font-black uppercase tracking-[0.25em]">Brokerage Platform</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div className="text-white text-4xl md:text-5xl font-black tracking-tighter leading-[0.95]">
+                Secure <br />
+                <span className="text-white/60">Account Access</span>
+              </div>
+              <div className="text-white/70 text-sm leading-relaxed max-w-lg">
+                登录后即可查看账户总览、持仓分布、资金状态、在途结算与待办提醒。所有页面风格与交互保持一致、克制且专业。
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { label: 'Institutional UI', value: 'Premium & clean', icon: ShieldCheck },
+                { label: 'Fast workflow', value: 'Low friction', icon: TrendingUp },
+                { label: 'Protected', value: 'Session-based', icon: Lock },
+              ].map((b, idx) => {
+                const Icon = b.icon;
+                return (
+                  <div key={idx} className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                    <div className="flex items-center gap-2">
+                      <Icon className="w-4 h-4 text-white/80" />
+                      <div className="text-[10px] font-black uppercase tracking-widest text-white/60">{b.label}</div>
+                    </div>
+                    <div className="mt-2 text-white font-black">{b.value}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Form */}
+        <div className="lg:col-span-5 bg-white rounded-[2.5rem] border border-huobi-border shadow-2xl p-8 md:p-10 flex flex-col justify-between gap-8">
+          <div className="flex flex-col gap-2">
+            <div className="text-[10px] font-black text-huobi-blue uppercase tracking-[0.25em]">Sign in</div>
+            <div className="text-3xl font-black text-huobi-text tracking-tight">登录</div>
+            <div className="text-sm text-huobi-muted leading-relaxed">
+              使用你的内部账号进入系统。
+            </div>
+          </div>
+
+          <form className="flex flex-col gap-4" onSubmit={submit}>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] uppercase text-huobi-muted font-black tracking-widest">Username</label>
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="e.g. j.bond"
+                className="w-full bg-huobi-card border border-huobi-border rounded-2xl py-3.5 px-4 text-sm font-bold focus:outline-none focus:border-huobi-blue focus:ring-4 focus:ring-huobi-blue/5 transition-all text-huobi-text"
+                autoComplete="username"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] uppercase text-huobi-muted font-black tracking-widest">Password</label>
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                type="password"
+                className="w-full bg-huobi-card border border-huobi-border rounded-2xl py-3.5 px-4 text-sm font-bold focus:outline-none focus:border-huobi-blue focus:ring-4 focus:ring-huobi-blue/5 transition-all text-huobi-text"
+                autoComplete="current-password"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-4 mt-1">
+              <button
+                type="button"
+                onClick={() => setRemember(v => !v)}
+                className="flex items-center gap-3 text-left"
+              >
+                <div className={cn(
+                  "w-5 h-5 rounded border flex items-center justify-center transition-all",
+                  remember ? "bg-huobi-blue border-huobi-blue" : "border-huobi-border hover:border-huobi-blue"
+                )}>
+                  {remember && <CheckCircle2 className="w-4 h-4 text-white" />}
+                </div>
+                <span className="text-[11px] text-huobi-muted font-bold">记住登录状态</span>
+              </button>
+
+              <button type="button" className="text-[11px] font-black text-huobi-blue hover:underline uppercase tracking-widest">
+                Forgot?
+              </button>
+            </div>
+
+            {error && (
+              <div className="p-4 bg-huobi-down/5 border border-huobi-down/20 rounded-2xl flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-huobi-down shrink-0 mt-0.5" />
+                <div className="text-[11px] text-huobi-muted leading-relaxed">
+                  <span className="font-black text-huobi-down uppercase tracking-widest">Login error</span>
+                  <div className="mt-1">{error}</div>
+                </div>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="mt-2 w-full py-4 bg-huobi-text text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200"
+            >
+              Sign in
+            </button>
+
+            <div className="text-[10px] text-huobi-muted font-bold leading-relaxed">
+              提示：当前为演示登录（仅做前端状态门禁），不会校验真实后端身份。
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const DashboardView = () => {
   const account = useMemo(() => {
@@ -1739,6 +1893,23 @@ const IncomingTransfersView = ({
 };
 
 export default function App() {
+  const [isAuthed, setIsAuthed] = useState(() => {
+    try {
+      return localStorage.getItem(AUTH_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (!isAuthed) return;
+    try {
+      localStorage.setItem(AUTH_STORAGE_KEY, 'true');
+    } catch {
+      // ignore
+    }
+  }, [isAuthed]);
+
   const [view, setView] = useState<'Dashboard' | 'Market' | 'Trade' | 'TransferOut' | 'Incoming' | 'Records' | 'Assets'>('Dashboard');
   const [selectedStock, setSelectedStock] = useState<Stock>(HK_STOCKS[0]);
   const [requests, setRequests] = useState<TradeRequest[]>([]);
@@ -1824,6 +1995,10 @@ export default function App() {
   const handleViewChange = (newView: any) => {
     setView(newView);
   };
+
+  if (!isAuthed) {
+    return <LoginView onLogin={() => setIsAuthed(true)} />;
+  }
 
   const renderContent = () => {
     switch (view) {
