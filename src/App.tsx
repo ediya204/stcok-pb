@@ -858,11 +858,19 @@ const RequestEntry = ({ stock, onStockChange, onCreateRequest, initialMode = 'Tr
     setAgreed(false);
   };
 
+  const isFullPageForm = showStockSelector;
+
   return (
-    <div className={cn(
-      "bg-huobi-bg flex flex-col h-full", 
-      showStockSelector ? "w-full max-w-4xl mx-auto border border-huobi-border rounded-2xl overflow-hidden shadow-2xl" : "w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-huobi-border"
-    )}>
+    <div
+      className={cn(
+        "bg-huobi-bg flex flex-col",
+        // Full page form: let the card height follow content (no fixed height / internal forced scrolling).
+        isFullPageForm
+          ? "w-full max-w-4xl mx-auto border border-huobi-border rounded-2xl overflow-visible shadow-2xl"
+          : // Sidebar form: fill available height and allow internal scrolling.
+            "w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-huobi-border h-full min-h-0"
+      )}
+    >
       {/* Header / Mode Selection */}
       {!hideModeToggle && (
         <div className="flex border-b border-huobi-border bg-huobi-card">
@@ -881,7 +889,12 @@ const RequestEntry = ({ stock, onStockChange, onCreateRequest, initialMode = 'Tr
         </div>
       )}
       
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 flex flex-col gap-6">
+      <div
+        className={cn(
+          "custom-scrollbar p-6 flex flex-col gap-6",
+          isFullPageForm ? "overflow-visible" : "flex-1 min-h-0 overflow-y-auto"
+        )}
+      >
         {/* Risk Warning & Securities Notice */}
         <div className="p-4 bg-huobi-down/5 border border-huobi-down/20 rounded-xl">
           <div className="flex items-start gap-3">
@@ -1085,7 +1098,7 @@ const RequestEntry = ({ stock, onStockChange, onCreateRequest, initialMode = 'Tr
         </div>
 
         {/* Footer / Submission */}
-        <div className="mt-4 pt-6 border-t border-huobi-border flex flex-col gap-4">
+        <div className={cn("pt-6 border-t border-huobi-border flex flex-col gap-4", isFullPageForm ? "mt-8" : "mt-4")}>
           <div className="flex items-start gap-3 cursor-pointer group" onClick={() => setAgreed(!agreed)}>
             <div className={cn(
               "w-5 h-5 rounded border flex items-center justify-center transition-all mt-0.5",
@@ -1101,7 +1114,10 @@ const RequestEntry = ({ stock, onStockChange, onCreateRequest, initialMode = 'Tr
             </span>
           </div>
 
-          <div className="flex justify-between items-center p-4 bg-huobi-card rounded-xl border border-huobi-border">
+          <div className={cn(
+            "p-4 bg-huobi-card rounded-xl border border-huobi-border",
+            isFullPageForm ? "flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between" : "flex justify-between items-center"
+          )}>
             <div className="flex flex-col">
               <span className="text-[10px] text-huobi-muted font-bold uppercase">Estimated Value</span>
               <span className="text-xl font-mono text-huobi-text font-bold">
@@ -1112,7 +1128,7 @@ const RequestEntry = ({ stock, onStockChange, onCreateRequest, initialMode = 'Tr
               onClick={handleSubmit}
               disabled={!agreed || !amount || (mode === 'Transfer' && !matchedCounterparty)}
               className={cn(
-                "px-8 py-4 rounded-xl font-bold text-lg text-white shadow-2xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100",
+                "w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-lg text-white shadow-2xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100",
                 mode === 'Trade' 
                   ? (side === 'Open' ? "bg-huobi-up hover:bg-huobi-up/90 shadow-huobi-up/20" : "bg-huobi-down hover:bg-huobi-down/90 shadow-huobi-down/20") 
                   : "bg-huobi-down hover:bg-huobi-down/90 shadow-huobi-down/20"
