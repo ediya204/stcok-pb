@@ -38,7 +38,7 @@ export function StatusChip({ label, variant = 'pending', className }: StatusChip
   return (
     <span
       className={cn(
-        'inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider',
+        'inline-flex items-center px-2 py-0.5 rounded-md ty-label-sm',
         variantStyles[variant] || variantStyles.pending,
         className
       )}

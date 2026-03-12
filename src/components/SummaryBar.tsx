@@ -22,12 +22,12 @@ export function SummaryBar({ items, className }: SummaryBarProps) {
     >
       {items.map((item, i) => (
         <div key={i} className="flex items-baseline gap-2">
-          <span className="text-[10px] font-bold text-huobi-muted uppercase tracking-wider">
+          <span className="ty-label-sm text-huobi-muted">
             {item.label}
           </span>
           <span
             className={cn(
-              'text-sm font-bold font-mono',
+              'ty-title-md font-mono',
               item.tone === 'up' && 'text-huobi-up',
               item.tone === 'down' && 'text-huobi-down',
               item.tone === 'neutral' && 'text-huobi-text'
