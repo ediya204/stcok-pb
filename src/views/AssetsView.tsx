@@ -473,10 +473,15 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
   const [depositAmount, setDepositAmount] = useState('');
   const [depositStep, setDepositStep] = useState<'form' | 'summary' | 'submitted'>('form');
   const [depositError, setDepositError] = useState<string | null>(null);
+  const [depositRef, setDepositRef] = useState<string | null>(null);
+  const [depositSubmittedAt, setDepositSubmittedAt] = useState<string | null>(null);
 
   const [withdrawCurrency, setWithdrawCurrency] = useState<'HKD' | 'USD' | 'CNY'>('HKD');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
+  const [withdrawStep, setWithdrawStep] = useState<'form' | 'submitted'>('form');
+  const [withdrawRef, setWithdrawRef] = useState<string | null>(null);
+  const [withdrawSubmittedAt, setWithdrawSubmittedAt] = useState<string | null>(null);
 
   const [transferFrom, setTransferFrom] = useState<'HKD' | 'USD' | 'CNY'>('HKD');
   const [transferTo, setTransferTo] = useState<'HKD' | 'USD' | 'CNY'>('USD');
@@ -488,9 +493,14 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
     setDepositAmount('');
     setDepositStep('form');
     setDepositError(null);
+    setDepositRef(null);
+    setDepositSubmittedAt(null);
     setWithdrawCurrency('HKD');
     setWithdrawAmount('');
     setWithdrawError(null);
+    setWithdrawStep('form');
+    setWithdrawRef(null);
+    setWithdrawSubmittedAt(null);
     setTransferFrom('HKD');
     setTransferTo('USD');
     setTransferAmount('');
@@ -549,6 +559,8 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
         },
         ...prev,
       ]);
+      setDepositRef(ref);
+      setDepositSubmittedAt(time);
       setDepositStep('submitted');
     }
   };
@@ -584,7 +596,9 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
       },
       ...prev,
     ]);
-    closeDrawer();
+    setWithdrawRef(ref);
+    setWithdrawSubmittedAt(time);
+    setWithdrawStep('submitted');
   };
 
   const handleSubmitTransfer = () => {
@@ -793,22 +807,86 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
                 </>
               )}
               {depositStep === 'submitted' && (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-5">
                   <div className="p-4 rounded-2xl bg-huobi-up/10 border border-huobi-up/40 flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-huobi-up mt-0.5" />
                     <div className="text-[11px] text-huobi-text">
-                      <div className="font-black uppercase tracking-widest text-huobi-up mb-1">Deposit request created</div>
+                      <div className="font-black uppercase tracking-widest text-huobi-up mb-1">Deposit request submitted</div>
                       <p className="text-huobi-muted">
-                        Your deposit instruction has been recorded as <span className="font-mono">PENDING</span>. Please complete the bank transfer
-                        using the provided details. Once received, funds will be credited to your account.
+                        Your deposit instruction has been created and is currently{' '}
+                        <span className="font-mono font-bold text-huobi-up">PENDING FUNDS</span>. Please complete the bank transfer using the
+                        reference below so we can match your payment.
                       </p>
                     </div>
                   </div>
-                  <div className="text-[11px] text-huobi-muted">
-                    You can track this request under <span className="font-bold">Assets &gt; Pending Applications</span> and the corresponding cash
-                    movement under <span className="font-bold">Fund History</span>.
+
+                  <div className="grid grid-cols-2 gap-4 text-[11px]">
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Reference</div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="font-mono text-huobi-text">{depositRef}</span>
+                        {depositRef && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (depositRef) {
+                                navigator.clipboard?.writeText(depositRef).catch(() => {});
+                              }
+                            }}
+                            className="px-2 py-1 rounded-md border border-huobi-border text-[10px] font-bold uppercase tracking-widest text-huobi-muted hover:bg-huobi-card"
+                          >
+                            Copy
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Status</div>
+                      <div className="mt-1 font-bold text-huobi-up">Pending bank transfer</div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Currency</div>
+                      <div className="mt-1 font-bold text-huobi-text">{depositCurrency}</div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Amount</div>
+                      <div className="mt-1 font-mono text-huobi-text">
+                        {Number(depositAmount || 0).toLocaleString()} {depositCurrency}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Funding method</div>
+                      <div className="mt-1 text-huobi-text">Bank transfer</div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Expected credit</div>
+                      <div className="mt-1 text-huobi-text">T+1 after funds received</div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Submitted at</div>
+                      <div className="mt-1 text-huobi-text">{depositSubmittedAt}</div>
+                    </div>
                   </div>
-                  <div className="flex justify-end">
+
+                  <div className="p-3 rounded-xl bg-huobi-card border border-huobi-border text-[11px] text-huobi-muted">
+                    Bank: VC Securities Client Trust · Account: 123-456789-001. Use the reference above in your bank transfer remark so we can match
+                    and credit the funds to your account.
+                  </div>
+
+                  <div className="flex flex-wrap justify-between gap-3 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById('asset-history');
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                        closeDrawer();
+                      }}
+                      className="px-4 py-2 rounded-xl border border-huobi-border text-xs font-bold uppercase tracking-widest text-huobi-text hover:bg-huobi-card"
+                    >
+                      View in history
+                    </button>
                     <button
                       type="button"
                       onClick={closeDrawer}
@@ -823,46 +901,138 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
           )}
           {openAction === 'withdraw' && (
             <div className="flex flex-col gap-4">
-              <p className="text-[11px] text-huobi-muted">Submit a withdrawal request. Available balance only; processing may take 1–2 business days.</p>
-              <div>
-                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Currency</label>
-                <select
-                  className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue"
-                  value={withdrawCurrency}
-                  onChange={(e) => setWithdrawCurrency(e.target.value as 'HKD' | 'USD' | 'CNY')}
-                >
-                  <option value="HKD">HKD</option>
-                  <option value="USD">USD</option>
-                  <option value="CNY">CNY</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Amount</label>
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  value={withdrawAmount}
-                  onChange={(e) => {
-                    setWithdrawAmount(e.target.value);
-                    if (withdrawError) setWithdrawError(null);
-                  }}
-                  className="w-full px-4 py-3 rounded-xl border border-huobi-border font-mono focus:outline-none focus:border-huobi-blue"
-                />
-                {withdrawError && <p className="mt-1 text-[10px] text-huobi-down">{withdrawError}</p>}
-              </div>
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
-                Withdrawals are subject to review. Ensure bank details are up to date in account settings.
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleSubmitWithdraw}
-                  className="px-6 py-2 rounded-xl bg-huobi-blue text-white text-xs font-bold uppercase tracking-widest hover:bg-huobi-blue/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!withdrawAmount}
-                >
-                  Submit withdrawal request
-                </button>
-              </div>
+              {withdrawStep === 'form' && (
+                <>
+                  <p className="text-[11px] text-huobi-muted">
+                    Submit a withdrawal request. Only available balance can be withdrawn; processing may take 1–2 business days.
+                  </p>
+                  <div>
+                    <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Currency</label>
+                    <select
+                      className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue"
+                      value={withdrawCurrency}
+                      onChange={(e) => setWithdrawCurrency(e.target.value as 'HKD' | 'USD' | 'CNY')}
+                    >
+                      <option value="HKD">HKD</option>
+                      <option value="USD">USD</option>
+                      <option value="CNY">CNY</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Amount</label>
+                    <input
+                      type="number"
+                      placeholder="0.00"
+                      value={withdrawAmount}
+                      onChange={(e) => {
+                        setWithdrawAmount(e.target.value);
+                        if (withdrawError) setWithdrawError(null);
+                      }}
+                      className="w-full px-4 py-3 rounded-xl border border-huobi-border font-mono focus:outline-none focus:border-huobi-blue"
+                    />
+                    {withdrawError && <p className="mt-1 text-[10px] text-huobi-down">{withdrawError}</p>}
+                  </div>
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
+                    Withdrawals are subject to broker review. Ensure your registered bank details are up to date in account settings.
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleSubmitWithdraw}
+                      className="px-6 py-2 rounded-xl bg-huobi-blue text-white text-xs font-bold uppercase tracking-widest hover:bg-huobi-blue/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!withdrawAmount}
+                    >
+                      Submit withdrawal request
+                    </button>
+                  </div>
+                </>
+              )}
+              {withdrawStep === 'submitted' && (
+                <div className="flex flex-col gap-5">
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                    <div className="text-[11px] text-huobi-text">
+                      <div className="font-black uppercase tracking-widest text-amber-700 mb-1">Withdrawal request submitted</div>
+                      <p className="text-huobi-muted">
+                        Your withdrawal instruction has been sent to the broker and is currently <span className="font-mono font-bold">UNDER REVIEW</span>.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-[11px]">
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Reference</div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="font-mono text-huobi-text">{withdrawRef}</span>
+                        {withdrawRef && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (withdrawRef) {
+                                navigator.clipboard?.writeText(withdrawRef).catch(() => {});
+                              }
+                            }}
+                            className="px-2 py-1 rounded-md border border-huobi-border text-[10px] font-bold uppercase tracking-widest text-huobi-muted hover:bg-huobi-card"
+                          >
+                            Copy
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Status</div>
+                      <div className="mt-1 font-bold text-amber-700">Under review</div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Currency</div>
+                      <div className="mt-1 font-bold text-huobi-text">{withdrawCurrency}</div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Amount</div>
+                      <div className="mt-1 font-mono text-huobi-text">
+                        {Number(withdrawAmount || 0).toLocaleString()} {withdrawCurrency}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Submitted at</div>
+                      <div className="mt-1 text-huobi-text">{withdrawSubmittedAt}</div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Expected credit</div>
+                      <div className="mt-1 text-huobi-text">T+1 after approval</div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-huobi-card border border-huobi-border text-[11px] text-huobi-muted">
+                    Once approved, funds will be released to your registered bank account. You can monitor this request under{' '}
+                    <span className="font-bold">Assets &gt; Pending Applications</span> and related cash movements under{' '}
+                    <span className="font-bold">Fund History</span>.
+                  </div>
+
+                  <div className="flex flex-wrap justify-between gap-3 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById('asset-history');
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                        closeDrawer();
+                      }}
+                      className="px-4 py-2 rounded-xl border border-huobi-border text-xs font-bold uppercase tracking-widest text-huobi-text hover:bg-huobi-card"
+                    >
+                      View in history
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closeDrawer}
+                      className="px-6 py-2 rounded-xl bg-huobi-blue text-white text-xs font-bold uppercase tracking-widest hover:bg-huobi-blue/90"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {openAction === 'transfer' && (
