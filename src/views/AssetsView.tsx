@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { LayoutGrid, Info, AlertCircle } from 'lucide-react';
+import { LayoutGrid, Info, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { PageHeader, EmptyState, StatusChip } from '../components';
 import type { Position } from '../constants';
 
 type AssetKpi = {
@@ -61,48 +62,15 @@ type AssetAlertItem = {
   severity: 'info' | 'warn' | 'critical';
 };
 
-const AssetHeader = ({
-  baseCurrency,
-  accountType,
-  lastUpdated,
-}: {
-  baseCurrency: string;
-  accountType: string;
-  lastUpdated: string;
-}) => (
-  <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-6">
-    <div className="flex flex-col gap-2">
-      <div className="text-[10px] font-black text-huobi-blue uppercase tracking-[0.25em]">
-        Asset Management
-      </div>
-      <h1 className="text-3xl md:text-4xl font-bold text-huobi-text tracking-tight">
-        Asset Overview
-      </h1>
-      <p className="text-sm text-huobi-muted max-w-xl leading-relaxed">
-        Centralized view of your total equity, cash, holdings and recent fund activities across the account.
-      </p>
-      <div className="flex flex-wrap items-center gap-3 text-[11px] text-huobi-muted font-bold">
-        <span className="px-2 py-0.5 rounded-full bg-gray-100 text-huobi-text">{accountType}</span>
-        <span>Base currency: <span className="text-huobi-text">{baseCurrency}</span></span>
-        <span className="text-huobi-muted/80">Last updated: <span className="text-huobi-text">{lastUpdated}</span></span>
-      </div>
+function AssetHeaderActions({ baseCurrency, accountType, lastUpdated }: { baseCurrency: string; accountType: string; lastUpdated: string }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="px-2 py-0.5 rounded-full bg-gray-100 text-huobi-text text-[11px] font-bold">{accountType}</span>
+      <span className="text-[11px] text-huobi-muted">Base: <span className="text-huobi-text">{baseCurrency}</span></span>
+      <span className="text-[11px] text-huobi-muted">Updated: <span className="text-huobi-text">{lastUpdated}</span></span>
     </div>
-    <div className="flex flex-shrink-0 flex-wrap gap-2">
-      <button className="px-4 py-2.5 bg-huobi-blue text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-huobi-blue/90">
-        Deposit
-      </button>
-      <button className="px-4 py-2.5 bg-huobi-card border border-huobi-border rounded-xl text-xs font-black uppercase tracking-widest hover:bg-huobi-border">
-        Withdraw
-      </button>
-      <button className="px-4 py-2.5 bg-huobi-card border border-huobi-border rounded-xl text-xs font-black uppercase tracking-widest hover:bg-huobi-border">
-        Transfer
-      </button>
-      <button className="px-4 py-2.5 bg-white border border-huobi-border rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-100">
-        Export Statement
-      </button>
-    </div>
-  </div>
-);
+  );
+}
 
 const AssetKpiCards = ({ items }: { items: AssetKpi[] }) => (
   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5 mb-6">
@@ -206,11 +174,18 @@ const CashBreakdownCard = ({ buckets }: { buckets: CashBucket[] }) => (
 
 const PositionsTable = ({ positions }: { positions: Position[] }) => {
   const totalMv = positions.reduce((acc, p) => acc + p.total * p.currentPrice, 0) || 1;
+  if (positions.length === 0) {
+    return <EmptyState icon={LayoutGrid} title="No positions" description="Holdings will appear here after trades are executed." compact />;
+  }
   return (
     <div className="overflow-auto custom-scrollbar">
+      <div className="flex flex-wrap items-center gap-4 mb-3 text-[10px] font-bold text-huobi-muted uppercase tracking-wider">
+        <span>{positions.length} position{positions.length !== 1 ? 's' : ''}</span>
+        <span>Total market value: {totalMv.toLocaleString()} HKD</span>
+      </div>
       <table className="min-w-full text-xs">
-        <thead className="text-[10px] text-huobi-muted uppercase tracking-[0.18em]">
-          <tr className="text-left">
+        <thead className="sticky top-0 bg-white z-10 text-[10px] text-huobi-muted uppercase tracking-[0.18em]">
+          <tr className="text-left border-b border-huobi-border">
             <th className="py-2 pr-4 font-bold">Asset</th>
             <th className="py-2 pr-4 font-bold text-right">Qty</th>
             <th className="py-2 pr-4 font-bold text-right">Available</th>
@@ -229,7 +204,7 @@ const PositionsTable = ({ positions }: { positions: Position[] }) => {
             const pnl = (p.currentPrice - p.avgPrice) * p.total;
             const weight = (marketValue / totalMv) * 100;
             return (
-              <tr key={p.symbol} className="border-t border-huobi-border/60">
+              <tr key={p.symbol} className="border-t border-huobi-border/60 hover:bg-huobi-card/50 transition-colors">
                 <td className="py-2 pr-4">
                   <div className="flex flex-col">
                     <span className="font-bold">{p.name}</span>
@@ -252,78 +227,85 @@ const PositionsTable = ({ positions }: { positions: Position[] }) => {
           })}
         </tbody>
       </table>
-      {positions.length === 0 && (
-        <div className="py-8 text-center text-[11px] text-huobi-muted">No positions yet. Once trades are executed, they will appear here.</div>
-      )}
     </div>
   );
 };
 
-const PendingApplicationsTable = ({ items }: { items: PendingApplication[] }) => (
-  <div className="overflow-auto custom-scrollbar">
-    <table className="min-w-full text-xs">
-      <thead className="text-[10px] text-huobi-muted uppercase tracking-[0.18em]">
-        <tr className="text-left">
-          <th className="py-2 pr-4 font-bold">Application ID</th>
-          <th className="py-2 pr-4 font-bold">Type</th>
-          <th className="py-2 pr-4 font-bold">Asset / Currency</th>
-          <th className="py-2 pr-4 font-bold text-right">Amount / Qty</th>
-          <th className="py-2 pr-4 font-bold">Status</th>
-          <th className="py-2 pr-4 font-bold">Submitted</th>
-          <th className="py-2 pr-4 font-bold">ETA</th>
-        </tr>
-      </thead>
-      <tbody className="text-[11px] text-huobi-text">
-        {items.map((item) => (
-          <tr key={item.id} className="border-t border-huobi-border/60">
-            <td className="py-2 pr-4 font-mono">{item.id}</td>
-            <td className="py-2 pr-4">{item.type}</td>
-            <td className="py-2 pr-4">{item.asset}</td>
-            <td className="py-2 pr-4 text-right font-mono">{item.amount}</td>
-            <td className="py-2 pr-4">
-              <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-black uppercase', item.status === 'Pending' && 'bg-amber-100 text-amber-700', item.status === 'Processing' && 'bg-sky-100 text-sky-700', item.status === 'Accepted' && 'bg-emerald-100 text-emerald-700', item.status === 'Rejected' && 'bg-rose-100 text-rose-700')}>{item.status}</span>
-            </td>
-            <td className="py-2 pr-4 text-huobi-muted">{item.submittedAt}</td>
-            <td className="py-2 pr-4 text-huobi-muted">{item.eta}</td>
+const PendingApplicationsTable = ({ items }: { items: PendingApplication[] }) => {
+  if (items.length === 0) {
+    return <EmptyState icon={Clock} title="No pending applications" description="Applications you submit will appear here." compact />;
+  }
+  return (
+    <div className="overflow-auto custom-scrollbar">
+      <div className="mb-3 text-[10px] font-bold text-huobi-muted uppercase tracking-wider">{items.length} application{items.length !== 1 ? 's' : ''}</div>
+      <table className="min-w-full text-xs">
+        <thead className="sticky top-0 bg-white z-10 text-[10px] text-huobi-muted uppercase tracking-[0.18em]">
+          <tr className="text-left border-b border-huobi-border">
+            <th className="py-2 pr-4 font-bold">Application ID</th>
+            <th className="py-2 pr-4 font-bold">Type</th>
+            <th className="py-2 pr-4 font-bold">Asset / Currency</th>
+            <th className="py-2 pr-4 font-bold text-right">Amount / Qty</th>
+            <th className="py-2 pr-4 font-bold">Status</th>
+            <th className="py-2 pr-4 font-bold">Submitted</th>
+            <th className="py-2 pr-4 font-bold">ETA</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
-    {items.length === 0 && <div className="py-8 text-center text-[11px] text-huobi-muted">No pending applications.</div>}
-  </div>
-);
+        </thead>
+        <tbody className="text-[11px] text-huobi-text">
+          {items.map((item) => (
+            <tr key={item.id} className="border-t border-huobi-border/60 hover:bg-huobi-card/50 transition-colors">
+              <td className="py-2 pr-4 font-mono">{item.id}</td>
+              <td className="py-2 pr-4">{item.type}</td>
+              <td className="py-2 pr-4">{item.asset}</td>
+              <td className="py-2 pr-4 text-right font-mono">{item.amount}</td>
+              <td className="py-2 pr-4">
+                <StatusChip label={item.status} variant={item.status === 'Pending' ? 'pending' : item.status === 'Processing' ? 'processing' : item.status === 'Accepted' ? 'completed' : 'rejected'} />
+              </td>
+              <td className="py-2 pr-4 text-huobi-muted">{item.submittedAt}</td>
+              <td className="py-2 pr-4 text-huobi-muted">{item.eta}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
-const FundHistoryTable = ({ items }: { items: FundHistoryItem[] }) => (
-  <div className="overflow-auto custom-scrollbar">
-    <table className="min-w-full text-xs">
-      <thead className="text-[10px] text-huobi-muted uppercase tracking-[0.18em]">
-        <tr className="text-left">
-          <th className="py-2 pr-4 font-bold">Time</th>
-          <th className="py-2 pr-4 font-bold">Type</th>
-          <th className="py-2 pr-4 font-bold">Currency</th>
-          <th className="py-2 pr-4 font-bold text-right">Amount</th>
-          <th className="py-2 pr-4 font-bold">Status</th>
-          <th className="py-2 pr-4 font-bold">Reference</th>
-        </tr>
-      </thead>
-      <tbody className="text-[11px] text-huobi-text">
-        {items.map((item, idx) => (
-          <tr key={idx} className="border-t border-huobi-border/60">
-            <td className="py-2 pr-4 text-huobi-muted">{item.time}</td>
-            <td className="py-2 pr-4">{item.type}</td>
-            <td className="py-2 pr-4">{item.ccy}</td>
-            <td className="py-2 pr-4 text-right font-mono">{item.amount.toLocaleString()}</td>
-            <td className="py-2 pr-4">
-              <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-black uppercase', item.status === 'Completed' && 'bg-emerald-100 text-emerald-700', item.status === 'Processing' && 'bg-sky-100 text-sky-700', item.status === 'Failed' && 'bg-rose-100 text-rose-700')}>{item.status}</span>
-            </td>
-            <td className="py-2 pr-4 font-mono text-huobi-muted">{item.ref}</td>
+const FundHistoryTable = ({ items }: { items: FundHistoryItem[] }) => {
+  if (items.length === 0) {
+    return <EmptyState icon={LayoutGrid} title="No fund history" description="Deposits, withdrawals and fees will appear here." compact />;
+  }
+  return (
+    <div className="overflow-auto custom-scrollbar">
+      <div className="mb-3 text-[10px] font-bold text-huobi-muted uppercase tracking-wider">{items.length} record{items.length !== 1 ? 's' : ''}</div>
+      <table className="min-w-full text-xs">
+        <thead className="sticky top-0 bg-white z-10 text-[10px] text-huobi-muted uppercase tracking-[0.18em]">
+          <tr className="text-left border-b border-huobi-border">
+            <th className="py-2 pr-4 font-bold">Time</th>
+            <th className="py-2 pr-4 font-bold">Type</th>
+            <th className="py-2 pr-4 font-bold">Currency</th>
+            <th className="py-2 pr-4 font-bold text-right">Amount</th>
+            <th className="py-2 pr-4 font-bold">Status</th>
+            <th className="py-2 pr-4 font-bold">Reference</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
-    {items.length === 0 && <div className="py-8 text-center text-[11px] text-huobi-muted">No fund history yet.</div>}
-  </div>
-);
+        </thead>
+        <tbody className="text-[11px] text-huobi-text">
+          {items.map((item, idx) => (
+            <tr key={idx} className="border-t border-huobi-border/60 hover:bg-huobi-card/50 transition-colors">
+              <td className="py-2 pr-4 text-huobi-muted">{item.time}</td>
+              <td className="py-2 pr-4">{item.type}</td>
+              <td className="py-2 pr-4">{item.ccy}</td>
+              <td className="py-2 pr-4 text-right font-mono">{item.amount.toLocaleString()}</td>
+              <td className="py-2 pr-4">
+                <StatusChip label={item.status} variant={item.status === 'Completed' ? 'completed' : item.status === 'Processing' ? 'processing' : 'rejected'} />
+              </td>
+              <td className="py-2 pr-4 font-mono text-huobi-muted">{item.ref}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 const RecentActivityCard = ({ items }: { items: AssetActivityItem[] }) => (
   <div className="bg-white rounded-2xl border border-huobi-border p-5 flex flex-col gap-3">
@@ -484,7 +466,19 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
   return (
     <div className="flex-1 p-6 md:p-8 overflow-y-auto custom-scrollbar bg-[#F3F4F6]">
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
-        <AssetHeader baseCurrency={account.baseCurrency} accountType={account.accountType} lastUpdated={account.lastUpdated} />
+        <PageHeader
+          sectionLabel="Asset Management"
+          title="Asset Overview"
+          subtitle="Centralized view of your total equity, cash, holdings and recent fund activities across the account."
+          actions={[
+            { label: 'Deposit', onClick: () => {}, primary: true },
+            { label: 'Withdraw', onClick: () => {} },
+            { label: 'Transfer', onClick: () => {} },
+            { label: 'Export Statement', onClick: () => {} },
+          ]}
+        >
+          <AssetHeaderActions baseCurrency={account.baseCurrency} accountType={account.accountType} lastUpdated={account.lastUpdated} />
+        </PageHeader>
         <AssetKpiCards items={kpis} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <AssetAllocationCard items={allocation} />

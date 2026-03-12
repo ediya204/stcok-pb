@@ -54,8 +54,11 @@ import {
 } from './constants';
 import { alltickService, type AlltickTicker } from './services/alltickService';
 import AssetsView from './views/AssetsView';
+import { PageHeader, EmptyState, FilterBar, SummaryBar, DetailDrawer, StatusChip } from './components';
 
 const AUTH_STORAGE_KEY = 'vcsecurities:authed';
+/** 默认登录路径 */
+const LOGIN_PATH = '/login';
 
 const LoginView = ({ onLogin }: { onLogin: () => void }) => {
   const [username, setUsername] = useState('');
@@ -1547,16 +1550,20 @@ const PortfolioTabs = ({ requests, positions, onCancelRequest }: { requests: Tra
       </div>
       <div className="flex-1 overflow-auto p-4 custom-scrollbar">
         {activeTab === 'Positions' && (
-          <div className="h-full overflow-x-auto">
+          <div className="h-full overflow-x-auto overflow-y-auto">
             <div className="min-w-[600px] lg:min-w-0">
             {positions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-huobi-muted gap-2">
-                <LayoutGrid className="w-8 h-8 opacity-20" />
-                <span className="text-sm">No positions found</span>
-              </div>
+              <EmptyState icon={LayoutGrid} title="No positions" description="Holdings will appear here after execution." compact />
             ) : (
+              <>
+                {positions.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-4 mb-3 text-[10px] font-bold text-huobi-muted uppercase tracking-wider">
+                    <span>{positions.length} position{positions.length !== 1 ? 's' : ''}</span>
+                    <span>Total value: {(positions.reduce((s, p) => s + p.total * p.currentPrice, 0)).toLocaleString()} HKD</span>
+                  </div>
+                )}
               <table className="w-full text-left text-[11px]">
-                <thead>
+                <thead className="sticky top-0 bg-huobi-bg z-10">
                   <tr className="text-huobi-muted border-b border-huobi-border/50">
                     <th className="pb-2 font-medium">Asset</th>
                     <th className="pb-2 font-medium">Total</th>
@@ -1590,21 +1597,24 @@ const PortfolioTabs = ({ requests, positions, onCancelRequest }: { requests: Tra
                   })}
                 </tbody>
               </table>
+              </>
             )}
             </div>
           </div>
         )}
         {activeTab === 'Application History' && (
-          <div className="h-full overflow-x-auto">
+          <div className="h-full overflow-x-auto overflow-y-auto">
             <div className="min-w-[800px] lg:min-w-0">
             {requests.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-huobi-muted gap-2">
-                <LayoutGrid className="w-8 h-8 opacity-20" />
-                <span className="text-sm">No application records</span>
-              </div>
+              <EmptyState icon={Clock} title="No application records" description="Submitted applications will appear here." compact />
             ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-4 mb-3 text-[10px] font-bold text-huobi-muted uppercase tracking-wider">
+                  <span>{requests.length} application{requests.length !== 1 ? 's' : ''}</span>
+                  <span>Pending: {requests.filter(r => r.status === 'Pending' || r.status === 'Auditing').length}</span>
+                </div>
               <table className="w-full text-left text-[11px]">
-                <thead>
+                <thead className="sticky top-0 bg-huobi-bg z-10">
                   <tr className="text-huobi-muted border-b border-huobi-border/50">
                     <th className="pb-2 font-medium text-left">Time / Ref No</th>
                     <th className="pb-2 font-medium text-left">Method</th>
@@ -1677,6 +1687,7 @@ const PortfolioTabs = ({ requests, positions, onCancelRequest }: { requests: Tra
                   })}
                 </tbody>
               </table>
+              </>
             )}
             </div>
           </div>
@@ -1710,6 +1721,8 @@ const PortfolioTabs = ({ requests, positions, onCancelRequest }: { requests: Tra
 
 // --- Main App ---
 
+type IncomingStatusFilter = 'all' | 'Pending Response' | 'Processing' | 'Completed' | 'Rejected';
+
 const IncomingTransfersView = ({ 
   transfers, 
   onAction 
@@ -1718,33 +1731,75 @@ const IncomingTransfersView = ({
   onAction: (id: string, action: 'Accept' | 'Reject') => void 
 }) => {
   const [selectedTransfer, setSelectedTransfer] = useState<IncomingTransfer | null>(null);
+  const [statusFilter, setStatusFilter] = useState<IncomingStatusFilter>('all');
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  const filteredTransfers = useMemo(() => {
+    if (statusFilter === 'all') return transfers;
+    if (statusFilter === 'Processing') return transfers.filter(t => t.status === 'Accepted' || t.status === 'Processing');
+    return transfers.filter(t => t.status === statusFilter);
+  }, [transfers, statusFilter]);
+
+  const pendingCount = transfers.filter(t => t.status === 'Pending Response').length;
+  const completedCount = transfers.filter(t => t.status === 'Completed').length;
+
+  const handleAction = (id: string, action: 'Accept' | 'Reject') => {
+    setActionLoadingId(id);
+    onAction(id, action);
+    setTimeout(() => setActionLoadingId(null), 1200);
+  };
 
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-huobi-bg">
       <div className="max-w-6xl mx-auto flex flex-col gap-6">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl md:text-3xl font-bold text-huobi-text tracking-tight">Incoming Transfers</h2>
-          <p className="text-huobi-muted text-sm">
-            Review incoming stock transfer instructions and choose whether to accept them.
-            Accepted transfers will be processed before being reflected in your holdings.
-          </p>
-        </div>
-
+        <PageHeader
+          sectionLabel="Brokerage"
+          title="Incoming Transfers"
+          subtitle="Review incoming stock transfer instructions and choose whether to accept them. Accepted transfers will be processed before being reflected in your holdings."
+        />
+        <SummaryBar
+          items={[
+            { label: 'Total', value: transfers.length, tone: 'neutral' },
+            { label: 'Awaiting response', value: pendingCount, tone: pendingCount > 0 ? 'down' : 'neutral' },
+            { label: 'Completed', value: completedCount, tone: 'up' },
+          ]}
+        />
+        <FilterBar<IncomingStatusFilter>
+          tabs={[
+            { id: 'all', label: 'All', count: transfers.length },
+            { id: 'Pending Response', label: 'Pending', count: transfers.filter(t => t.status === 'Pending Response').length },
+            { id: 'Processing', label: 'Processing', count: transfers.filter(t => t.status === 'Accepted' || t.status === 'Processing').length },
+            { id: 'Completed', label: 'Completed', count: completedCount },
+            { id: 'Rejected', label: 'Rejected', count: transfers.filter(t => t.status === 'Rejected').length },
+          ]}
+          activeTab={statusFilter}
+          onTabChange={setStatusFilter}
+        />
+        {filteredTransfers.length === 0 ? (
+          <EmptyState
+            icon={ArrowRightLeft}
+            title={transfers.length === 0 ? 'No incoming transfers' : 'No matching transfers'}
+            description={transfers.length === 0 ? 'Incoming transfer instructions from counterparties will appear here for your confirmation.' : 'Try a different filter.'}
+            className="rounded-2xl border border-huobi-border"
+          />
+        ) : (
         <div className="bg-white border border-huobi-border rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 border-b border-huobi-border">
-                  <th className="px-6 py-4 text-[10px] font-black text-huobi-muted uppercase tracking-widest">Instruction Info</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-huobi-muted uppercase tracking-widest">Asset</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-huobi-muted uppercase tracking-widest text-right">Quantity</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-huobi-muted uppercase tracking-widest">Counterparty</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-huobi-muted uppercase tracking-widest">Status</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-huobi-muted uppercase tracking-widest text-right">Actions</th>
+            <table className="w-full text-left border-collapse min-w-[700px]">
+              <thead className="sticky top-0 z-10 bg-gray-50 border-b border-huobi-border">
+                <tr className="text-[10px] font-black text-huobi-muted uppercase tracking-widest">
+                  <th className="px-6 py-4">Instruction Info</th>
+                  <th className="px-6 py-4">Asset</th>
+                  <th className="px-6 py-4 text-right">Quantity</th>
+                  <th className="px-6 py-4">Counterparty</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-huobi-border">
-                {transfers.map(t => (
+                {filteredTransfers.map(t => {
+                  const isLoading = actionLoadingId === t.id;
+                  return (
                   <tr key={t.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
@@ -1768,15 +1823,10 @@ const IncomingTransfersView = ({
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={cn(
-                        "px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider",
-                        t.status === 'Pending Response' ? "bg-huobi-blue/10 text-huobi-blue" :
-                        t.status === 'Accepted' || t.status === 'Processing' ? "bg-huobi-up/10 text-huobi-up" :
-                        t.status === 'Completed' ? "bg-huobi-up text-white" :
-                        "bg-huobi-down/10 text-huobi-down"
-                      )}>
-                        {t.status}
-                      </span>
+                      <StatusChip
+                        label={t.status}
+                        variant={t.status === 'Pending Response' ? 'auditing' : t.status === 'Completed' || t.status === 'Accepted' ? 'completed' : t.status === 'Rejected' ? 'rejected' : 'processing'}
+                      />
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -1790,14 +1840,16 @@ const IncomingTransfersView = ({
                         {t.status === 'Pending Response' && (
                           <>
                             <button 
-                              onClick={() => onAction(t.id, 'Accept')}
-                              className="px-3 py-1.5 bg-huobi-up text-white text-[10px] font-bold uppercase tracking-wider rounded-lg hover:bg-huobi-up/90 transition-all"
+                              onClick={() => handleAction(t.id, 'Accept')}
+                              disabled={isLoading}
+                              className="px-3 py-1.5 bg-huobi-up text-white text-[10px] font-bold uppercase tracking-wider rounded-lg hover:bg-huobi-up/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                             >
-                              Accept
+                              {isLoading ? 'Processing…' : 'Accept'}
                             </button>
                             <button 
-                              onClick={() => onAction(t.id, 'Reject')}
-                              className="px-3 py-1.5 bg-huobi-down/10 text-huobi-down text-[10px] font-bold uppercase tracking-wider rounded-lg hover:bg-huobi-down/20 transition-all"
+                              onClick={() => handleAction(t.id, 'Reject')}
+                              disabled={isLoading}
+                              className="px-3 py-1.5 bg-huobi-down/10 text-huobi-down text-[10px] font-bold uppercase tracking-wider rounded-lg hover:bg-huobi-down/20 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                             >
                               Reject
                             </button>
@@ -1806,11 +1858,13 @@ const IncomingTransfersView = ({
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
+        )}
       </div>
 
       {/* Detail Modal */}
@@ -1881,19 +1935,21 @@ const IncomingTransfersView = ({
                   <div className="flex gap-3">
                     <button 
                       onClick={() => {
-                        onAction(selectedTransfer.id, 'Accept');
+                        handleAction(selectedTransfer.id, 'Accept');
                         setSelectedTransfer(null);
                       }}
-                      className="flex-1 py-4 bg-huobi-up text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-huobi-up/20 hover:bg-huobi-up/90 transition-all"
+                      disabled={actionLoadingId === selectedTransfer.id}
+                      className="flex-1 py-4 bg-huobi-up text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-huobi-up/20 hover:bg-huobi-up/90 transition-all disabled:opacity-60"
                     >
                       Accept Transfer
                     </button>
                     <button 
                       onClick={() => {
-                        onAction(selectedTransfer.id, 'Reject');
+                        handleAction(selectedTransfer.id, 'Reject');
                         setSelectedTransfer(null);
                       }}
-                      className="flex-1 py-4 bg-huobi-down/10 text-huobi-down text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-huobi-down/20 transition-all"
+                      disabled={actionLoadingId === selectedTransfer.id}
+                      className="flex-1 py-4 bg-huobi-down/10 text-huobi-down text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-huobi-down/20 transition-all disabled:opacity-60"
                     >
                       Reject Transfer
                     </button>
@@ -1929,14 +1985,14 @@ export default function App() {
   }, [isAuthed]);
 
   // Keep URL in sync with auth status:
-  // - Not authed: always stay on /login
-  // - Authed: /login 自动跳到首页 /
+  // - Not authed: always stay on LOGIN_PATH
+  // - Authed: LOGIN_PATH 自动跳到首页 /
   useEffect(() => {
-    if (!isAuthed && location.pathname !== '/login') {
-      navigate('/login', { replace: true });
+    if (!isAuthed && location.pathname !== LOGIN_PATH) {
+      navigate(LOGIN_PATH, { replace: true });
       return;
     }
-    if (isAuthed && location.pathname === '/login') {
+    if (isAuthed && location.pathname === LOGIN_PATH) {
       navigate('/', { replace: true });
     }
   }, [isAuthed, location.pathname, navigate]);
@@ -1980,6 +2036,17 @@ export default function App() {
     }
   ]);
   const [toasts, setToasts] = useState<{id: number, message: string, type: 'success' | 'error'}[]>([]);
+  const [recordsTypeFilter, setRecordsTypeFilter] = useState<'all' | 'Trade' | 'Transfer'>('all');
+  const [recordsSearch, setRecordsSearch] = useState('');
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [exportingRecords, setExportingRecords] = useState(false);
+
+  const filteredRecords = useMemo(() => {
+    let list = recordsTypeFilter === 'all' ? requests : requests.filter(r => r.type === recordsTypeFilter);
+    const q = recordsSearch.trim().toLowerCase();
+    if (q) list = list.filter(r => r.id.toLowerCase().includes(q) || (r.refNo?.toLowerCase().includes(q)) || r.symbol.toLowerCase().includes(q));
+    return list;
+  }, [requests, recordsTypeFilter, recordsSearch]);
 
   const addToast = (message: string, type: 'success' | 'error' = 'success') => {
     const id = Date.now();
@@ -2166,20 +2233,26 @@ export default function App() {
             </div>
           </div>
         );
-      case 'Trade':
+      case 'Trade': {
+        const tradeRequests = requests.filter(r => r.type === 'Trade');
+        const pendingTradeCount = tradeRequests.filter(r => r.status === 'Pending' || r.status === 'Auditing').length;
         return (
           <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-huobi-bg">
             <div className="max-w-5xl mx-auto flex flex-col gap-6">
-              <div className="flex flex-col md:items-center md:flex-row justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-2xl md:text-3xl font-bold text-huobi-text tracking-tight">Broker Entrustment</h2>
-                  <p className="text-huobi-muted text-sm">
-                    Submit your trading application to the broker. 
-                    Final results are subject to broker review and execution results.
-                  </p>
-                </div>
-              </div>
-
+              <PageHeader
+                sectionLabel="Trading"
+                title="Broker Entrustment"
+                subtitle="Submit your trading application to the broker. Final results are subject to broker review and execution results."
+                actions={[{ label: 'View All Records', onClick: () => handleViewChange('Records'), primary: false }]}
+              />
+              {pendingTradeCount > 0 && (
+                <SummaryBar
+                  items={[
+                    { label: 'Pending review', value: `${pendingTradeCount} application${pendingTradeCount > 1 ? 's' : ''}`, tone: 'neutral' },
+                    { label: 'Total submissions', value: tradeRequests.length, tone: 'neutral' },
+                  ]}
+                />
+              )}
               <div className="relative z-0 bg-huobi-card border border-huobi-border rounded-2xl overflow-visible shadow-2xl">
                 <RequestEntry 
                   stock={selectedStock} 
@@ -2192,11 +2265,11 @@ export default function App() {
                 />
               </div>
 
-              <div className="relative z-10 bg-huobi-card border border-huobi-border rounded-2xl p-6 mt-2">
-                <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-huobi-text">Recent Applications</h3>
+              <section className="relative z-10 bg-white border border-huobi-border rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-huobi-border flex items-center justify-between">
+                  <h3 className="text-base font-bold text-huobi-text">Recent Applications</h3>
                   <button 
-                    onClick={() => setView('Records')}
+                    onClick={() => handleViewChange('Records')}
                     className="text-huobi-blue text-xs font-bold hover:underline uppercase"
                   >View All Records</button>
                 </div>
@@ -2205,23 +2278,31 @@ export default function App() {
                   positions={positions} 
                   onCancelRequest={handleCancelRequest} 
                 />
-              </div>
+              </section>
             </div>
           </div>
         );
-      case 'TransferOut':
+      }
+      case 'TransferOut': {
+        const transferRequests = requests.filter(r => r.type === 'Transfer');
+        const pendingTransferCount = transferRequests.filter(r => r.status === 'Pending' || r.status === 'Auditing').length;
         return (
           <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-huobi-bg">
             <div className="max-w-5xl mx-auto flex flex-col gap-6">
-              <div className="flex flex-col md:items-center md:flex-row justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-2xl md:text-3xl font-bold text-huobi-text tracking-tight">Stock Transfer Out</h2>
-                  <p className="text-huobi-muted text-sm">
-                    Submit a transfer-out application. Final result is subject to broker review and execution.
-                  </p>
-                </div>
-              </div>
-
+              <PageHeader
+                sectionLabel="Brokerage"
+                title="Stock Transfer Out"
+                subtitle="Submit a transfer-out application. Final result is subject to broker review and execution."
+                actions={[{ label: 'View All Records', onClick: () => handleViewChange('Records'), primary: false }]}
+              />
+              {pendingTransferCount > 0 && (
+                <SummaryBar
+                  items={[
+                    { label: 'Pending review', value: `${pendingTransferCount} application${pendingTransferCount > 1 ? 's' : ''}`, tone: 'neutral' },
+                    { label: 'Total transfer requests', value: transferRequests.length, tone: 'neutral' },
+                  ]}
+                />
+              )}
               <div className="relative z-0 bg-huobi-card border border-huobi-border rounded-2xl overflow-visible shadow-2xl">
                 <RequestEntry 
                   stock={selectedStock} 
@@ -2233,12 +2314,11 @@ export default function App() {
                   position={positions.find(p => p.symbol === selectedStock.symbol)}
                 />
               </div>
-
-              <div className="relative z-10 bg-huobi-card border border-huobi-border rounded-2xl p-6 mt-2">
-                <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-huobi-text">Recent Applications</h3>
+              <section className="relative z-10 bg-white border border-huobi-border rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-huobi-border flex items-center justify-between">
+                  <h3 className="text-base font-bold text-huobi-text">Recent Applications</h3>
                   <button 
-                    onClick={() => setView('Records')}
+                    onClick={() => handleViewChange('Records')}
                     className="text-huobi-blue text-xs font-bold hover:underline uppercase"
                   >View All Records</button>
                 </div>
@@ -2247,36 +2327,180 @@ export default function App() {
                   positions={positions} 
                   onCancelRequest={handleCancelRequest} 
                 />
-              </div>
+              </section>
             </div>
           </div>
         );
+      }
       case 'Incoming':
         return <IncomingTransfersView transfers={incomingTransfers} onAction={handleIncomingAction} />;
-      case 'Records':
+      case 'Records': {
+        const handleExportRecords = () => {
+          setExportingRecords(true);
+          setTimeout(() => {
+            setExportingRecords(false);
+            addToast('Records exported successfully.');
+          }, 800);
+        };
+        const recordStatusVariant = (s: RequestStatus): 'pending' | 'auditing' | 'accepted' | 'processing' | 'completed' | 'rejected' | 'cancelled' => {
+          const v: Record<RequestStatus, 'pending' | 'auditing' | 'accepted' | 'processing' | 'completed' | 'rejected' | 'cancelled'> = {
+            Pending: 'pending', Auditing: 'auditing', Accepted: 'accepted', Processing: 'processing',
+            Completed: 'completed', Rejected: 'rejected', Cancelled: 'cancelled', Executed: 'completed'
+          };
+          return v[s] ?? 'pending';
+        };
+        const selectedRequest = selectedRequestId ? requests.find(r => r.id === selectedRequestId) : null;
         return (
-          <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold text-huobi-text flex items-center gap-3">
-                  <Clock className="w-6 h-6 text-huobi-blue" />
-                  Transaction Records
-                </h2>
-                <div className="flex gap-4">
-                  <button className="px-4 py-2 bg-huobi-card border border-huobi-border rounded-lg text-sm hover:bg-huobi-border transition-colors">Export CSV</button>
-                  <button className="px-4 py-2 bg-huobi-blue text-white rounded-lg text-sm hover:bg-huobi-blue/90 transition-colors">Refresh</button>
-                </div>
-              </div>
-              <div className="bg-huobi-card border border-huobi-border rounded-xl p-6">
-                <PortfolioTabs 
-                  requests={requests} 
-                  positions={positions} 
-                  onCancelRequest={handleCancelRequest} 
-                />
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-huobi-bg">
+            <div className="max-w-7xl mx-auto flex flex-col gap-6">
+              <PageHeader
+                sectionLabel="Brokerage"
+                title="Transaction Records"
+                subtitle="View and track all trading and transfer applications. Use filters and search to find specific records."
+                actions={[
+                  { label: exportingRecords ? 'Exporting…' : 'Export CSV', onClick: handleExportRecords, disabled: exportingRecords },
+                  { label: 'Refresh', onClick: () => addToast('Records refreshed.'), primary: true },
+                ]}
+              />
+              <FilterBar
+                tabs={[
+                  { id: 'all' as const, label: 'All', count: requests.length },
+                  { id: 'Trade' as const, label: 'Trading', count: requests.filter(r => r.type === 'Trade').length },
+                  { id: 'Transfer' as const, label: 'Transfer', count: requests.filter(r => r.type === 'Transfer').length },
+                ]}
+                activeTab={recordsTypeFilter}
+                onTabChange={setRecordsTypeFilter}
+                searchPlaceholder="Ref No, symbol…"
+                searchValue={recordsSearch}
+                onSearchChange={setRecordsSearch}
+              />
+              <SummaryBar
+                items={[
+                  { label: 'Showing', value: filteredRecords.length, tone: 'neutral' },
+                  { label: 'Pending / Auditing', value: filteredRecords.filter(r => r.status === 'Pending' || r.status === 'Auditing').length, tone: 'neutral' },
+                  { label: 'Completed', value: filteredRecords.filter(r => r.status === 'Completed' || r.status === 'Accepted').length, tone: 'up' },
+                ]}
+              />
+              <div className="bg-white border border-huobi-border rounded-2xl shadow-sm overflow-hidden">
+                {filteredRecords.length === 0 ? (
+                  <EmptyState
+                    icon={Clock}
+                    title={requests.length === 0 ? 'No records yet' : 'No matching records'}
+                    description={requests.length === 0 ? 'Applications you submit will appear here.' : 'Try changing filters or search.'}
+                    className="rounded-2xl border-0"
+                  />
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-[11px] min-w-[800px]">
+                      <thead className="sticky top-0 z-10 bg-gray-50 border-b border-huobi-border">
+                        <tr className="text-[10px] font-black text-huobi-muted uppercase tracking-widest">
+                          <th className="px-6 py-4 font-medium text-left">Time / Ref No</th>
+                          <th className="px-6 py-4 font-medium text-left">Method</th>
+                          <th className="px-6 py-4 font-medium text-left">Asset</th>
+                          <th className="px-6 py-4 font-medium text-left">Instruction</th>
+                          <th className="px-6 py-4 font-medium text-left">Volume</th>
+                          <th className="px-6 py-4 font-medium text-left">Price / Counterparty</th>
+                          <th className="px-6 py-4 font-medium text-left">Status</th>
+                          <th className="px-6 py-4 font-medium text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-huobi-border/50">
+                        {filteredRecords.map(req => (
+                          <tr
+                            key={req.id}
+                            className="hover:bg-huobi-card/50 transition-colors cursor-pointer"
+                            onClick={() => setSelectedRequestId(req.id)}
+                          >
+                            <td className="px-6 py-3">
+                              <div className="text-huobi-muted">{req.time}</div>
+                              <div className="text-[10px] font-mono">{req.refNo}</div>
+                            </td>
+                            <td className="px-6 py-3">
+                              <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold uppercase", req.type === 'Trade' ? "bg-huobi-blue/10 text-huobi-blue" : "bg-huobi-muted/10 text-huobi-muted")}>
+                                {req.type === 'Trade' ? 'Execution' : 'Transfer'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-3 font-bold">{req.symbol}.HK</td>
+                            <td className="px-6 py-3">
+                              <span className={cn((req.side === 'Open' || req.side === 'Inbound') ? "text-huobi-up" : "text-huobi-down")}>
+                                {req.side === 'Open' ? 'Entrust Open' : req.side === 'Close' ? 'Entrust Close' : req.side === 'Inbound' ? 'Receive' : 'Deliver'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-3 font-mono">{req.amount.toLocaleString()}</td>
+                            <td className="px-6 py-3">
+                              {req.type === 'Trade' ? (
+                                <span className="font-mono">{req.price?.toFixed(2)}</span>
+                              ) : (
+                                <div className="flex flex-col">
+                                  <span className="font-bold">{req.counterpartyCode}</span>
+                                  <span className="text-[10px] text-huobi-muted">{req.counterpartyName}</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-6 py-3">
+                              <StatusChip label={req.status} variant={recordStatusVariant(req.status)} />
+                            </td>
+                            <td className="px-6 py-3 text-right">
+                              <div className="flex justify-end gap-2">
+                                {req.status === 'Pending' && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleCancelRequest(req.id); }}
+                                    className="text-huobi-down hover:underline text-[10px] font-bold uppercase"
+                                  >
+                                    Cancel
+                                  </button>
+                                )}
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setSelectedRequestId(req.id); }}
+                                  className="text-huobi-blue hover:underline text-[10px] font-bold uppercase"
+                                >
+                                  Details
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
+            <DetailDrawer
+              open={!!selectedRequest}
+              onClose={() => setSelectedRequestId(null)}
+              title={selectedRequest ? `${selectedRequest.type} · ${selectedRequest.symbol}.HK` : ''}
+              subtitle={selectedRequest?.refNo ? `Ref: ${selectedRequest.refNo}` : undefined}
+              footer={selectedRequest?.status === 'Pending' && selectedRequest && (
+                <button
+                  onClick={() => { handleCancelRequest(selectedRequest.id); setSelectedRequestId(null); }}
+                  className="w-full py-3 rounded-xl border border-huobi-down text-huobi-down text-xs font-bold uppercase hover:bg-huobi-down/10 transition-colors"
+                >
+                  Cancel application
+                </button>
+              )}
+            >
+              {selectedRequest && (
+                <div className="grid grid-cols-2 gap-4 text-[11px]">
+                  <div><span className="text-huobi-muted uppercase font-bold">Time</span><div className="mt-0.5 font-bold">{selectedRequest.time}</div></div>
+                  <div><span className="text-huobi-muted uppercase font-bold">Ref No</span><div className="mt-0.5 font-mono">{selectedRequest.refNo}</div></div>
+                  <div><span className="text-huobi-muted uppercase font-bold">Asset</span><div className="mt-0.5 font-bold">{selectedRequest.symbol}.HK</div></div>
+                  <div><span className="text-huobi-muted uppercase font-bold">Instruction</span><div className="mt-0.5">{selectedRequest.side}</div></div>
+                  <div><span className="text-huobi-muted uppercase font-bold">Volume</span><div className="mt-0.5 font-mono">{selectedRequest.amount.toLocaleString()}</div></div>
+                  <div><span className="text-huobi-muted uppercase font-bold">Status</span><div className="mt-0.5"><StatusChip label={selectedRequest.status} variant={recordStatusVariant(selectedRequest.status)} /></div></div>
+                  {selectedRequest.type === 'Trade' && <div><span className="text-huobi-muted uppercase font-bold">Price</span><div className="mt-0.5 font-mono">{selectedRequest.price?.toFixed(2)} HKD</div></div>}
+                  {selectedRequest.type === 'Transfer' && (
+                    <>
+                      <div><span className="text-huobi-muted uppercase font-bold">Counterparty</span><div className="mt-0.5">{selectedRequest.counterpartyName}</div><div className="text-[10px] text-huobi-muted">{selectedRequest.counterpartyCode}</div></div>
+                    </>
+                  )}
+                  {selectedRequest.remarks && <div className="col-span-2"><span className="text-huobi-muted uppercase font-bold">Remarks</span><div className="mt-0.5">{selectedRequest.remarks}</div></div>}
+                </div>
+              )}
+            </DetailDrawer>
           </div>
         );
+      }
       case 'Assets':
         return <AssetsView positions={positions} />;
       default:
