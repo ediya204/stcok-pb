@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { LayoutGrid, Info, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { PageHeader, EmptyState, StatusChip } from '../components';
+import { PageHeader, EmptyState, StatusChip } from '../components/index';
 import type { Position } from '../constants';
 
 type AssetKpi = {

@@ -54,7 +54,7 @@ import {
 } from './constants';
 import { alltickService, type AlltickTicker } from './services/alltickService';
 import AssetsView from './views/AssetsView';
-import { PageHeader, EmptyState, FilterBar, SummaryBar, DetailDrawer, StatusChip } from './components';
+import { PageHeader, EmptyState, FilterBar, SummaryBar, DetailDrawer, StatusChip } from './components/index';
 
 const AUTH_STORAGE_KEY = 'vcsecurities:authed';
 /** 默认登录路径 */
