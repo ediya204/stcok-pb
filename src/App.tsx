@@ -53,6 +53,7 @@ import {
   type IncomingTransferStatus
 } from './constants';
 import { alltickService, type AlltickTicker } from './services/alltickService';
+import AssetsView from './views/AssetsView';
 
 const AUTH_STORAGE_KEY = 'vcsecurities:authed';
 
@@ -2277,56 +2278,7 @@ export default function App() {
           </div>
         );
       case 'Assets':
-        return (
-          <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold text-huobi-text flex items-center gap-3">
-                  <LayoutGrid className="w-6 h-6 text-huobi-blue" />
-                  Asset Management
-                </h2>
-                <div className="flex gap-4">
-                  <button className="px-4 py-2 bg-huobi-blue text-white rounded-lg text-sm hover:bg-huobi-blue/90 transition-colors">Deposit</button>
-                  <button className="px-4 py-2 bg-huobi-card border border-huobi-border rounded-lg text-sm hover:bg-huobi-border transition-colors">Withdraw</button>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-huobi-card p-6 rounded-xl border border-huobi-border">
-                  <span className="text-sm text-huobi-muted uppercase font-bold block mb-2">Total Equity (HKD)</span>
-                  <span className="text-3xl font-mono font-bold text-huobi-text">1,436,200.00</span>
-                  <div className="mt-4 pt-4 border-t border-huobi-border flex justify-between items-center">
-                    <span className="text-xs text-huobi-muted">≈ 183,657.60 USD</span>
-                    <span className="text-xs text-huobi-up font-bold">+2.4% Today</span>
-                  </div>
-                </div>
-                <div className="bg-huobi-card p-6 rounded-xl border border-huobi-border">
-                  <span className="text-sm text-huobi-muted uppercase font-bold block mb-2">Available Cash</span>
-                  <span className="text-3xl font-mono font-bold text-huobi-text">1,245,000.00</span>
-                  <div className="mt-4 pt-4 border-t border-huobi-border">
-                    <button className="text-huobi-blue text-xs font-bold hover:underline uppercase">Manage Bank Accounts</button>
-                  </div>
-                </div>
-                <div className="bg-huobi-card p-6 rounded-xl border border-huobi-border">
-                  <span className="text-sm text-huobi-muted uppercase font-bold block mb-2">Frozen Margin</span>
-                  <span className="text-3xl font-mono font-bold text-huobi-text">150,000.00</span>
-                  <div className="mt-4 pt-4 border-t border-huobi-border">
-                    <span className="text-xs text-huobi-muted">Locked for 3 pending requests</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-huobi-card border border-huobi-border rounded-xl p-6">
-                <h3 className="text-lg font-bold text-huobi-text mb-4">Holdings Details</h3>
-                <PortfolioTabs 
-                  requests={requests} 
-                  positions={positions} 
-                  onCancelRequest={handleCancelRequest} 
-                />
-              </div>
-            </div>
-          </div>
-        );
+        return <AssetsView positions={positions} />;
       default:
         return null;
     }
