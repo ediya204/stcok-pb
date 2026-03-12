@@ -1632,38 +1632,29 @@ export default function App() {
       case 'Market':
         return (
           <div className="flex flex-1 overflow-hidden flex-col lg:flex-row">
-            <MarketList 
-              onSelect={setSelectedStock} 
-              selectedSymbol={selectedStock.symbol} 
-            />
-            
-            <div className="flex-1 flex flex-col min-w-0 overflow-y-auto lg:overflow-hidden">
-              <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-                <TradingChart stock={selectedStock} />
-                <div className="hidden xl:flex">
-                  <OrderBook stock={selectedStock} />
+            <MarketList onSelect={setSelectedStock} selectedSymbol={selectedStock.symbol} />
+
+            <div className="flex-1 min-w-0 overflow-y-auto custom-scrollbar p-4 md:p-6 bg-huobi-bg">
+              <div className="max-w-5xl mx-auto flex flex-col gap-6">
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-2xl md:text-3xl font-bold text-huobi-text tracking-tight">Broker Entrustment</h2>
+                  <p className="text-huobi-muted text-sm">
+                    Select an asset and submit your trading application. Final results are subject to broker review and execution.
+                  </p>
+                </div>
+
+                <div className="bg-huobi-card border border-huobi-border rounded-2xl overflow-visible shadow-2xl">
+                  <RequestEntry
+                    stock={selectedStock}
+                    onStockChange={setSelectedStock}
+                    onCreateRequest={handleCreateRequest}
+                    initialMode="Trade"
+                    hideModeToggle={true}
+                    showStockSelector={true}
+                    position={positions.find(p => p.symbol === selectedStock.symbol)}
+                  />
                 </div>
               </div>
-              <div className="lg:hidden">
-                <RequestEntry 
-                  stock={selectedStock} 
-                  onCreateRequest={handleCreateRequest} 
-                  initialMode="Trade"
-                />
-              </div>
-              <PortfolioTabs 
-                requests={requests} 
-                positions={positions} 
-                onCancelRequest={handleCancelRequest} 
-              />
-            </div>
-
-            <div className="hidden lg:flex">
-              <RequestEntry 
-                stock={selectedStock} 
-                onCreateRequest={handleCreateRequest} 
-                initialMode="Trade"
-              />
             </div>
           </div>
         );
@@ -1681,7 +1672,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-huobi-card border border-huobi-border rounded-2xl overflow-visible shadow-2xl">
+              <div className="relative z-0 bg-huobi-card border border-huobi-border rounded-2xl overflow-visible shadow-2xl">
                 <RequestEntry 
                   stock={selectedStock} 
                   onStockChange={setSelectedStock}
@@ -1693,7 +1684,7 @@ export default function App() {
                 />
               </div>
 
-              <div className="bg-huobi-card border border-huobi-border rounded-2xl p-6">
+              <div className="relative z-10 bg-huobi-card border border-huobi-border rounded-2xl p-6 mt-2">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-lg font-bold text-huobi-text">Recent Applications</h3>
                   <button 
@@ -1723,7 +1714,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-huobi-card border border-huobi-border rounded-2xl overflow-visible shadow-2xl">
+              <div className="relative z-0 bg-huobi-card border border-huobi-border rounded-2xl overflow-visible shadow-2xl">
                 <RequestEntry 
                   stock={selectedStock} 
                   onStockChange={setSelectedStock}
@@ -1735,7 +1726,7 @@ export default function App() {
                 />
               </div>
 
-              <div className="bg-huobi-card border border-huobi-border rounded-2xl p-6">
+              <div className="relative z-10 bg-huobi-card border border-huobi-border rounded-2xl p-6 mt-2">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-lg font-bold text-huobi-text">Recent Applications</h3>
                   <button 
