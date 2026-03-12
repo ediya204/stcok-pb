@@ -307,28 +307,39 @@ const FundHistoryTable = ({ items }: { items: FundHistoryItem[] }) => {
   );
 };
 
-const RecentActivityCard = ({ items }: { items: AssetActivityItem[] }) => (
-  <div className="bg-white rounded-2xl border border-huobi-border p-5 flex flex-col gap-3">
-    <div className="flex items-center justify-between">
-      <h3 className="text-sm font-bold text-huobi-text">Recent Activity</h3>
-      <button className="text-[11px] text-huobi-blue font-bold hover:underline">View all</button>
-    </div>
-    <div className="space-y-3">
-      {items.map((item, idx) => (
-        <div key={idx} className="flex items-start justify-between gap-3">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[11px] text-huobi-text font-bold">{item.title}</span>
-            <span className="text-[10px] text-huobi-muted">{item.detail}</span>
+const RecentActivityCard = ({ items, onViewAll }: { items: AssetActivityItem[]; onViewAll?: () => void }) => {
+  return (
+    <div className="bg-white rounded-2xl border border-huobi-border p-5 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-huobi-text">Recent Activity</h3>
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="text-[11px] text-huobi-blue font-bold hover:underline disabled:text-huobi-muted disabled:cursor-default"
+          disabled={!onViewAll}
+        >
+          View all
+        </button>
+      </div>
+      <div className="space-y-3">
+        {items.map((item, idx) => (
+          <div key={idx} className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] text-huobi-text font-bold">{item.title}</span>
+              <span className="text-[10px] text-huobi-muted">{item.detail}</span>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-[10px] text-huobi-muted">{item.time}</span>
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 text-[10px] font-black uppercase tracking-widest text-huobi-muted">
+                {item.tag}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col items-end gap-1">
-            <span className="text-[10px] text-huobi-muted">{item.time}</span>
-            <span className="px-2 py-0.5 rounded-full bg-gray-100 text-[10px] font-black uppercase tracking-widest text-huobi-muted">{item.tag}</span>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const AssetAlertsCard = ({ items }: { items: AssetAlertItem[] }) => (
   <div className="bg-white rounded-2xl border border-huobi-border p-5 flex flex-col gap-3">
@@ -421,24 +432,18 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
     []
   );
 
-  const pendingApplications: PendingApplication[] = useMemo(
-    () => [
-      { id: 'APP-230184', type: 'Withdrawal', asset: 'HKD', amount: '100,000', status: 'Processing', submittedAt: 'Today 10:24', eta: 'T+1' },
-      { id: 'APP-230172', type: 'Transfer Out', asset: '00700.HK', amount: '500 shares', status: 'Pending', submittedAt: 'Yesterday 14:18', eta: 'Broker review' },
-      { id: 'APP-230165', type: 'Deposit', asset: 'USD', amount: '5,000', status: 'Accepted', submittedAt: 'Mar 10 09:05', eta: 'Completed' },
-    ],
-    []
-  );
+  const [pendingApplications, setPendingApplications] = useState<PendingApplication[]>([
+    { id: 'APP-230184', type: 'Withdrawal', asset: 'HKD', amount: '100,000', status: 'Processing', submittedAt: 'Today 10:24', eta: 'T+1' },
+    { id: 'APP-230172', type: 'Transfer Out', asset: '00700.HK', amount: '500 shares', status: 'Pending', submittedAt: 'Yesterday 14:18', eta: 'Broker review' },
+    { id: 'APP-230165', type: 'Deposit', asset: 'USD', amount: '5,000', status: 'Accepted', submittedAt: 'Mar 10 09:05', eta: 'Completed' },
+  ]);
 
-  const fundHistory: FundHistoryItem[] = useMemo(
-    () => [
-      { time: 'Today 09:15', type: 'Fee', ccy: 'HKD', amount: -120, status: 'Completed', ref: 'FEE-829103' },
-      { time: 'Yesterday 16:30', type: 'Dividend', ccy: 'HKD', amount: 2_600, status: 'Completed', ref: 'DIV-233712' },
-      { time: 'Mar 10 14:12', type: 'Withdrawal', ccy: 'HKD', amount: -10_000, status: 'Processing', ref: 'WD-993817' },
-      { time: 'Mar 02 11:05', type: 'Deposit', ccy: 'USD', amount: 5_000, status: 'Completed', ref: 'DP-117389' },
-    ],
-    []
-  );
+  const [fundHistory, setFundHistory] = useState<FundHistoryItem[]>([
+    { time: 'Today 09:15', type: 'Fee', ccy: 'HKD', amount: -120, status: 'Completed', ref: 'FEE-829103' },
+    { time: 'Yesterday 16:30', type: 'Dividend', ccy: 'HKD', amount: 2_600, status: 'Completed', ref: 'DIV-233712' },
+    { time: 'Mar 10 14:12', type: 'Withdrawal', ccy: 'HKD', amount: -10_000, status: 'Processing', ref: 'WD-993817' },
+    { time: 'Mar 02 11:05', type: 'Deposit', ccy: 'USD', amount: 5_000, status: 'Completed', ref: 'DP-117389' },
+  ]);
 
   const recentActivity: AssetActivityItem[] = useMemo(
     () => [
@@ -464,6 +469,161 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
   );
 
   const [openAction, setOpenAction] = useState<'deposit' | 'withdraw' | 'transfer' | 'export' | null>(null);
+  const [depositCurrency, setDepositCurrency] = useState<'HKD' | 'USD' | 'CNY'>('HKD');
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositStep, setDepositStep] = useState<'form' | 'summary' | 'submitted'>('form');
+  const [depositError, setDepositError] = useState<string | null>(null);
+
+  const [withdrawCurrency, setWithdrawCurrency] = useState<'HKD' | 'USD' | 'CNY'>('HKD');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
+
+  const [transferFrom, setTransferFrom] = useState<'HKD' | 'USD' | 'CNY'>('HKD');
+  const [transferTo, setTransferTo] = useState<'HKD' | 'USD' | 'CNY'>('USD');
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferError, setTransferError] = useState<string | null>(null);
+
+  const resetActionState = () => {
+    setDepositCurrency('HKD');
+    setDepositAmount('');
+    setDepositStep('form');
+    setDepositError(null);
+    setWithdrawCurrency('HKD');
+    setWithdrawAmount('');
+    setWithdrawError(null);
+    setTransferFrom('HKD');
+    setTransferTo('USD');
+    setTransferAmount('');
+    setTransferError(null);
+  };
+
+  const closeDrawer = () => {
+    setOpenAction(null);
+    resetActionState();
+  };
+
+  const validatePositiveAmount = (raw: string, min: number) => {
+    const value = Number(raw);
+    if (!raw || Number.isNaN(value)) return 'Please enter a valid amount';
+    if (value <= 0) return 'Amount must be greater than 0';
+    if (value < min) return `Minimum amount is ${min.toLocaleString()} `;
+    return null;
+  };
+
+  const handleConfirmDeposit = () => {
+    const error = validatePositiveAmount(depositAmount, 1000);
+    setDepositError(error);
+    if (error) {
+      setDepositStep('form');
+      return;
+    }
+    if (depositStep === 'form') {
+      setDepositStep('summary');
+      return;
+    }
+    if (depositStep === 'summary') {
+      const amountNumber = Number(depositAmount);
+      const ref = `DP-${Date.now().toString().slice(-6)}`;
+      const now = new Date();
+      const time = now.toLocaleString();
+      setPendingApplications(prev => [
+        {
+          id: `APP-${Date.now().toString().slice(-6)}`,
+          type: 'Deposit',
+          asset: depositCurrency,
+          amount: amountNumber.toLocaleString(),
+          status: 'Pending',
+          submittedAt: time,
+          eta: 'T+1',
+        },
+        ...prev,
+      ]);
+      setFundHistory(prev => [
+        {
+          time,
+          type: 'Deposit',
+          ccy: depositCurrency,
+          amount: amountNumber,
+          status: 'Pending',
+          ref,
+        },
+        ...prev,
+      ]);
+      setDepositStep('submitted');
+    }
+  };
+
+  const handleSubmitWithdraw = () => {
+    const error = validatePositiveAmount(withdrawAmount, 1000);
+    setWithdrawError(error);
+    if (error) return;
+    const amountNumber = Number(withdrawAmount);
+    const now = new Date();
+    const time = now.toLocaleString();
+    const ref = `WD-${Date.now().toString().slice(-6)}`;
+    setPendingApplications(prev => [
+      {
+        id: `APP-${Date.now().toString().slice(-6)}`,
+        type: 'Withdrawal',
+        asset: withdrawCurrency,
+        amount: amountNumber.toLocaleString(),
+        status: 'Processing',
+        submittedAt: time,
+        eta: 'T+1',
+      },
+      ...prev,
+    ]);
+    setFundHistory(prev => [
+      {
+        time,
+        type: 'Withdrawal',
+        ccy: withdrawCurrency,
+        amount: -amountNumber,
+        status: 'Processing',
+        ref,
+      },
+      ...prev,
+    ]);
+    closeDrawer();
+  };
+
+  const handleSubmitTransfer = () => {
+    if (transferFrom === transferTo) {
+      setTransferError('Source and target ledgers must be different');
+      return;
+    }
+    const error = validatePositiveAmount(transferAmount, 1);
+    setTransferError(error);
+    if (error) return;
+    const amountNumber = Number(transferAmount);
+    const now = new Date();
+    const time = now.toLocaleString();
+    const ref = `TF-${Date.now().toString().slice(-6)}`;
+    setPendingApplications(prev => [
+      {
+        id: `APP-${Date.now().toString().slice(-6)}`,
+        type: 'Internal Transfer',
+        asset: `${transferFrom} → ${transferTo}`,
+        amount: amountNumber.toLocaleString(),
+        status: 'Processing',
+        submittedAt: time,
+        eta: 'Same day',
+      },
+      ...prev,
+    ]);
+    setFundHistory(prev => [
+      {
+        time,
+        type: 'Internal Transfer',
+        ccy: transferFrom,
+        amount: -amountNumber,
+        status: 'Processing',
+        ref,
+      },
+      ...prev,
+    ]);
+    closeDrawer();
+  };
 
   const actionConfig = {
     deposit: { title: 'Deposit Funds', subtitle: 'Add funds to your account' },
@@ -496,7 +656,15 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
         <AssetManagementTabs positions={positions} pendingApplications={pendingApplications} fundHistory={fundHistory} />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2">
-            <RecentActivityCard items={recentActivity} />
+            <RecentActivityCard
+              items={recentActivity}
+              onViewAll={() => {
+                const el = document.getElementById('asset-history');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }}
+            />
           </div>
           <AssetAlertsCard items={alerts} />
         </div>
@@ -506,14 +674,14 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
       {openAction && (
         <DetailDrawer
           open={!!openAction}
-          onClose={() => setOpenAction(null)}
+          onClose={closeDrawer}
           title={actionConfig[openAction].title}
           subtitle={actionConfig[openAction].subtitle}
           footer={
             openAction === 'export' ? (
               <button
                 type="button"
-                onClick={() => setOpenAction(null)}
+                onClick={closeDrawer}
                 className="w-full py-3 rounded-xl bg-huobi-blue text-white text-xs font-bold uppercase tracking-widest hover:bg-huobi-blue/90"
               >
                 Download
@@ -521,7 +689,7 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
             ) : (
               <button
                 type="button"
-                onClick={() => setOpenAction(null)}
+                onClick={closeDrawer}
                 className="w-full py-3 rounded-xl border border-huobi-border text-huobi-text text-xs font-bold uppercase tracking-widest hover:bg-huobi-card"
               >
                 Cancel
@@ -531,22 +699,126 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
         >
           {openAction === 'deposit' && (
             <div className="flex flex-col gap-4">
-              <p className="text-[11px] text-huobi-muted">Select currency and amount to deposit. Funds will be credited after settlement.</p>
-              <div>
-                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Currency</label>
-                <select className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue">
-                  <option>HKD</option>
-                  <option>USD</option>
-                  <option>CNY</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Amount</label>
-                <input type="number" placeholder="0.00" className="w-full px-4 py-3 rounded-xl border border-huobi-border font-mono focus:outline-none focus:border-huobi-blue" />
-              </div>
-              <div className="p-3 rounded-xl bg-huobi-card border border-huobi-border text-[11px] text-huobi-muted">
-                Deposit instructions and reference will be provided after you confirm. Subject to broker processing.
-              </div>
+              {depositStep === 'form' && (
+                <>
+                  <p className="text-[11px] text-huobi-muted">
+                    Select currency and amount to deposit. Funds will be credited after settlement once your transfer is received.
+                  </p>
+                  <div>
+                    <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Currency</label>
+                    <select
+                      className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue"
+                      value={depositCurrency}
+                      onChange={(e) => setDepositCurrency(e.target.value as 'HKD' | 'USD' | 'CNY')}
+                    >
+                      <option value="HKD">HKD</option>
+                      <option value="USD">USD</option>
+                      <option value="CNY">CNY</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Amount</label>
+                    <input
+                      type="number"
+                      placeholder="0.00"
+                      value={depositAmount}
+                      onChange={(e) => {
+                        setDepositAmount(e.target.value);
+                        if (depositError) setDepositError(null);
+                      }}
+                      className="w-full px-4 py-3 rounded-xl border border-huobi-border font-mono focus:outline-none focus:border-huobi-blue"
+                    />
+                    {depositError && <p className="mt-1 text-[10px] text-huobi-down">{depositError}</p>}
+                  </div>
+                  <div className="p-3 rounded-xl bg-huobi-card border border-huobi-border text-[11px] text-huobi-muted">
+                    Minimum online deposit is 1,000.00. After confirming, you will receive funding instructions and a reference code for your bank
+                    transfer.
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleConfirmDeposit}
+                      className="px-6 py-2 rounded-xl bg-huobi-blue text-white text-xs font-bold uppercase tracking-widest hover:bg-huobi-blue/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!depositAmount}
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </>
+              )}
+              {depositStep === 'summary' && (
+                <>
+                  <p className="text-[11px] text-huobi-muted">
+                    Please review the deposit details below. Use the provided bank information and reference when initiating the transfer.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4 text-[11px]">
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Currency</div>
+                      <div className="mt-1 font-bold text-huobi-text">{depositCurrency}</div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Amount</div>
+                      <div className="mt-1 font-mono text-huobi-text">{Number(depositAmount || 0).toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Funding method</div>
+                      <div className="mt-1 text-huobi-text">Bank transfer</div>
+                    </div>
+                    <div>
+                      <div className="text-huobi-muted uppercase font-bold">Expected credit</div>
+                      <div className="mt-1 text-huobi-text">T+1 after funds received</div>
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-huobi-card border border-huobi-border text-[11px] text-huobi-muted">
+                    Bank: VC Securities Client Trust<br />
+                    Account: 123-456789-001<br />
+                    Reference: will be generated after you confirm and used to match your incoming transfer.
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setDepositStep('form')}
+                      className="px-4 py-2 rounded-xl border border-huobi-border text-xs font-bold uppercase tracking-widest text-huobi-text hover:bg-huobi-card"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmDeposit}
+                      className="px-6 py-2 rounded-xl bg-huobi-blue text-white text-xs font-bold uppercase tracking-widest hover:bg-huobi-blue/90"
+                    >
+                      Confirm & Generate Reference
+                    </button>
+                  </div>
+                </>
+              )}
+              {depositStep === 'submitted' && (
+                <div className="flex flex-col gap-4">
+                  <div className="p-4 rounded-2xl bg-huobi-up/10 border border-huobi-up/40 flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-huobi-up mt-0.5" />
+                    <div className="text-[11px] text-huobi-text">
+                      <div className="font-black uppercase tracking-widest text-huobi-up mb-1">Deposit request created</div>
+                      <p className="text-huobi-muted">
+                        Your deposit instruction has been recorded as <span className="font-mono">PENDING</span>. Please complete the bank transfer
+                        using the provided details. Once received, funds will be credited to your account.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-huobi-muted">
+                    You can track this request under <span className="font-bold">Assets &gt; Pending Applications</span> and the corresponding cash
+                    movement under <span className="font-bold">Fund History</span>.
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={closeDrawer}
+                      className="px-6 py-2 rounded-xl bg-huobi-blue text-white text-xs font-bold uppercase tracking-widest hover:bg-huobi-blue/90"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {openAction === 'withdraw' && (
@@ -554,18 +826,42 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
               <p className="text-[11px] text-huobi-muted">Submit a withdrawal request. Available balance only; processing may take 1–2 business days.</p>
               <div>
                 <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Currency</label>
-                <select className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue">
-                  <option>HKD</option>
-                  <option>USD</option>
-                  <option>CNY</option>
+                <select
+                  className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue"
+                  value={withdrawCurrency}
+                  onChange={(e) => setWithdrawCurrency(e.target.value as 'HKD' | 'USD' | 'CNY')}
+                >
+                  <option value="HKD">HKD</option>
+                  <option value="USD">USD</option>
+                  <option value="CNY">CNY</option>
                 </select>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Amount</label>
-                <input type="number" placeholder="0.00" className="w-full px-4 py-3 rounded-xl border border-huobi-border font-mono focus:outline-none focus:border-huobi-blue" />
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  value={withdrawAmount}
+                  onChange={(e) => {
+                    setWithdrawAmount(e.target.value);
+                    if (withdrawError) setWithdrawError(null);
+                  }}
+                  className="w-full px-4 py-3 rounded-xl border border-huobi-border font-mono focus:outline-none focus:border-huobi-blue"
+                />
+                {withdrawError && <p className="mt-1 text-[10px] text-huobi-down">{withdrawError}</p>}
               </div>
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
                 Withdrawals are subject to review. Ensure bank details are up to date in account settings.
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSubmitWithdraw}
+                  className="px-6 py-2 rounded-xl bg-huobi-blue text-white text-xs font-bold uppercase tracking-widest hover:bg-huobi-blue/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!withdrawAmount}
+                >
+                  Submit withdrawal request
+                </button>
               </div>
             </div>
           )}
@@ -574,23 +870,51 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
               <p className="text-[11px] text-huobi-muted">Transfer between your cash ledgers (e.g. HKD ↔ USD) or to another account.</p>
               <div>
                 <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">From</label>
-                <select className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue">
-                  <option>HKD Ledger</option>
-                  <option>USD Ledger</option>
-                  <option>CNY Ledger</option>
+                <select
+                  className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue"
+                  value={transferFrom}
+                  onChange={(e) => setTransferFrom(e.target.value as 'HKD' | 'USD' | 'CNY')}
+                >
+                  <option value="HKD">HKD Ledger</option>
+                  <option value="USD">USD Ledger</option>
+                  <option value="CNY">CNY Ledger</option>
                 </select>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">To</label>
-                <select className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue">
-                  <option>USD Ledger</option>
-                  <option>HKD Ledger</option>
-                  <option>CNY Ledger</option>
+                <select
+                  className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue"
+                  value={transferTo}
+                  onChange={(e) => setTransferTo(e.target.value as 'HKD' | 'USD' | 'CNY')}
+                >
+                  <option value="USD">USD Ledger</option>
+                  <option value="HKD">HKD Ledger</option>
+                  <option value="CNY">CNY Ledger</option>
                 </select>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Amount</label>
-                <input type="number" placeholder="0.00" className="w-full px-4 py-3 rounded-xl border border-huobi-border font-mono focus:outline-none focus:border-huobi-blue" />
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  value={transferAmount}
+                  onChange={(e) => {
+                    setTransferAmount(e.target.value);
+                    if (transferError) setTransferError(null);
+                  }}
+                  className="w-full px-4 py-3 rounded-xl border border-huobi-border font-mono focus:outline-none focus:border-huobi-blue"
+                />
+                {transferError && <p className="mt-1 text-[10px] text-huobi-down">{transferError}</p>}
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSubmitTransfer}
+                  className="px-6 py-2 rounded-xl bg-huobi-blue text-white text-xs font-bold uppercase tracking-widest hover:bg-huobi-blue/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!transferAmount}
+                >
+                  Submit transfer
+                </button>
               </div>
             </div>
           )}
