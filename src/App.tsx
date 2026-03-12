@@ -1681,7 +1681,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-huobi-card border border-huobi-border rounded-2xl overflow-hidden shadow-2xl">
+              <div className="bg-huobi-card border border-huobi-border rounded-2xl overflow-visible shadow-2xl">
                 <RequestEntry 
                   stock={selectedStock} 
                   onStockChange={setSelectedStock}
@@ -1723,7 +1723,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-huobi-card border border-huobi-border rounded-2xl overflow-hidden shadow-2xl">
+              <div className="bg-huobi-card border border-huobi-border rounded-2xl overflow-visible shadow-2xl">
                 <RequestEntry 
                   stock={selectedStock} 
                   onStockChange={setSelectedStock}
