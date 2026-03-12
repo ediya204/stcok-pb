@@ -14,7 +14,11 @@ type TickerCallback = (data: AlltickTicker) => void;
 
 class AlltickService {
   private ws: WebSocket | null = null;
-  private token: string = (import.meta as any).env.VITE_ALLTICK_API_KEY || '';
+  // 优先使用 VITE_ALLTICK_API_KEY，其次兼容 VITE_TICKAPI（对应你在平台上配置的 tickapi）
+  private token: string =
+    (import.meta as any).env.VITE_ALLTICK_API_KEY ||
+    (import.meta as any).env.VITE_TICKAPI ||
+    '';
   private callbacks: Map<string, TickerCallback[]> = new Map();
   private subscribedSymbols: Set<string> = new Set();
   private reconnectAttempts = 0;
@@ -111,11 +115,15 @@ class AlltickService {
   }
 
   private formatSymbol(symbol: string): string {
-    // Convert "00700" to "700.HK"
-    if (symbol.startsWith('0')) {
-      return `${parseInt(symbol)}.HK`;
+    // 纯数字按港股代码处理，例如 "00700" -> "700.HK"
+    if (/^\d+$/.test(symbol)) {
+      const num = parseInt(symbol, 10);
+      if (!Number.isNaN(num)) {
+        return `${num}.HK`;
+      }
     }
-    return `${symbol}.HK`;
+    // 其他（如 BTCUSDT）按原始符号大写使用
+    return symbol.toUpperCase();
   }
 
   async getKline(symbol: string, type: string = '1min'): Promise<any[]> {

@@ -767,7 +767,8 @@ type View =
   | 'TransferOut'
   | 'Incoming'
   | 'Records'
-  | 'Assets';
+  | 'Assets'
+  | 'Account';
 
 const Header = ({
   currentView,
@@ -1369,20 +1370,6 @@ const RequestEntry = ({ stock, onStockChange, onCreateRequest, initialMode = 'Tr
           isFullPageForm ? "overflow-visible" : "flex-1 min-h-0 overflow-y-auto"
         )}
       >
-        {/* Risk Warning & Securities Notice */}
-        <div className="p-4 bg-huobi-down/5 border border-huobi-down/20 rounded-xl">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-huobi-down shrink-0 mt-0.5" />
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-bold text-huobi-down uppercase">Securities Service Notice</span>
-              <p className="text-[11px] text-huobi-muted leading-relaxed">
-                This is a controlled business application page. Submitting a request does not guarantee execution. 
-                All applications are subject to broker review, risk control, and manual settlement.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Common Info Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col gap-4">
@@ -1438,25 +1425,7 @@ const RequestEntry = ({ stock, onStockChange, onCreateRequest, initialMode = 'Tr
               </AnimatePresence>
             </div>
 
-            {/* Position Info Grid */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-huobi-card/50 border border-huobi-border p-3 rounded-lg">
-                <span className="text-[10px] text-huobi-muted uppercase font-bold block mb-1">Current Position</span>
-                <span className="text-sm font-mono text-huobi-text font-bold">{position?.total.toLocaleString() || '0'} Shares</span>
-              </div>
-              <div className="bg-huobi-card/50 border border-huobi-border p-3 rounded-lg">
-                <span className="text-[10px] text-huobi-muted uppercase font-bold block mb-1">Available to Apply</span>
-                <span className="text-sm font-mono text-huobi-up font-bold">{position?.available.toLocaleString() || '0'} Shares</span>
-              </div>
-              <div className="bg-huobi-card/50 border border-huobi-border p-3 rounded-lg">
-                <span className="text-[10px] text-huobi-muted uppercase font-bold block mb-1">Frozen / Processing</span>
-                <span className="text-sm font-mono text-huobi-down font-bold">{(position?.frozen || 0) + (position?.processing || 0)} Shares</span>
-              </div>
-              <div className="bg-huobi-card/50 border border-huobi-border p-3 rounded-lg">
-                <span className="text-[10px] text-huobi-muted uppercase font-bold block mb-1">Market Price</span>
-                <span className="text-sm font-mono text-huobi-blue font-bold">{stock.price.toFixed(2)} HKD</span>
-              </div>
-            </div>
+            {/* Position Info Grid removed per latest design */}
           </div>
 
           {/* Form Fields Section */}
@@ -2085,6 +2054,20 @@ export default function App() {
     }
   }, [isAuthed]);
 
+  // Subscribe BTCUSDT ticker for quick connectivity check in Market view
+  useEffect(() => {
+    const unsubscribe = alltickService.subscribe('BTCUSDT', (ticker) => {
+      const last = parseFloat(ticker.last_price);
+      const open = parseFloat(ticker.open_price) || last;
+      const changePct = open ? ((last - open) / open) * 100 : 0;
+      setBtcPrice(last);
+      setBtcChangePct(changePct);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   // Keep URL in sync with auth status:
   // - Not authed: always stay on LOGIN_PATH
   // - Authed: LOGIN_PATH 自动跳到首页 /
@@ -2106,6 +2089,7 @@ export default function App() {
     '/incoming': 'Incoming',
     '/records': 'Records',
     '/assets': 'Assets',
+    '/account': 'Account',
   };
 
   const viewToPath: Record<View, string> = {
@@ -2116,6 +2100,7 @@ export default function App() {
     Incoming: '/incoming',
     Records: '/records',
     Assets: '/assets',
+    Account: '/account',
   };
 
   const view: View = useMemo(() => {
@@ -2141,12 +2126,13 @@ export default function App() {
   const [recordsSearch, setRecordsSearch] = useState('');
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [exportingRecords, setExportingRecords] = useState(false);
-  const [isPersonalCenterOpen, setIsPersonalCenterOpen] = useState(false);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [lockPassword, setLockPassword] = useState('');
   const [lockError, setLockError] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [btcPrice, setBtcPrice] = useState<number | null>(null);
+  const [btcChangePct, setBtcChangePct] = useState<number | null>(null);
 
   const LOCK_PASSWORD = 'bond007';
 
@@ -2310,6 +2296,17 @@ export default function App() {
                       {selectedStock.low.toFixed(2)} – {selectedStock.high.toFixed(2)}
                     </span>
                   </div>
+                  {btcPrice !== null && (
+                    <div className="flex flex-col items-end">
+                      <span className="text-huobi-muted uppercase tracking-widest">BTCUSDT</span>
+                      <span className={cn(
+                        "font-mono",
+                        (btcChangePct ?? 0) >= 0 ? "text-huobi-up" : "text-huobi-down"
+                      )}>
+                        {btcPrice.toFixed(2)} ({(btcChangePct ?? 0).toFixed(2)}%)
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2610,6 +2607,99 @@ export default function App() {
           </div>
         );
       }
+      case 'Account':
+        return (
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-[#F3F4F6]">
+            <div className="max-w-5xl mx-auto flex flex-col gap-6">
+              <PageHeader
+                sectionLabel="Account"
+                title="Account Settings"
+                subtitle="Manage your personal information, security and preferences."
+              />
+              <div className="grid grid-cols-[auto,1fr] gap-4 items-center bg-white rounded-2xl border border-huobi-border p-5">
+                <div className="w-14 h-14 rounded-2xl overflow-hidden bg-huobi-blue/10 flex items-center justify-center">
+                  <img src="https://picsum.photos/seed/user/100/100" alt="User" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="ty-title-md text-huobi-text">James Bond</span>
+                  <span className="ty-body-sm text-huobi-muted">Account ID: 8000-123456 · Securities · Base CCY: HKD</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white rounded-2xl border border-huobi-border p-4 flex flex-col gap-3">
+                  <span className="ty-label-sm text-huobi-muted">Personal information</span>
+                  <div className="space-y-2 ty-body-sm text-huobi-text">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-huobi-muted">Full name</span>
+                      <span className="font-medium">James Bond</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-huobi-muted">Email</span>
+                      <span className="font-medium">bond@example.com</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-huobi-muted">Mobile</span>
+                      <span className="font-medium">+852 6123 4567</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-huobi-muted">Region</span>
+                      <span className="font-medium">Hong Kong</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white rounded-2xl border border-huobi-border p-4 flex flex-col gap-3">
+                  <span className="ty-label-sm text-huobi-muted">Security</span>
+                  <div className="space-y-2 ty-body-sm text-huobi-text">
+                    <div className="flex justify-between items-center gap-3">
+                      <span className="text-huobi-muted">Login password</span>
+                      <button className="ty-body-sm text-huobi-blue hover:underline">Change…</button>
+                    </div>
+                    <div className="flex justify-between items-center gap-3">
+                      <span className="text-huobi-muted">Two-factor auth</span>
+                      <span className="font-medium text-huobi-up">Enabled</span>
+                    </div>
+                    <div className="flex justify-between items-center gap-3">
+                      <span className="text-huobi-muted">Last login</span>
+                      <span className="font-medium">Today 10:12 · HK</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white rounded-2xl border border-huobi-border p-4 flex flex-col gap-3">
+                  <span className="ty-label-sm text-huobi-muted">Preferences</span>
+                  <div className="space-y-2 ty-body-sm text-huobi-text">
+                    <div className="flex justify-between items-center gap-3">
+                      <span className="text-huobi-muted">Theme</span>
+                      <span className="font-medium">Light</span>
+                    </div>
+                    <div className="flex justify-between items-center gap-3">
+                      <span className="text-huobi-muted">Notifications</span>
+                      <span className="font-medium">Email + In-app</span>
+                    </div>
+                    <div className="flex justify-between items-center gap-3">
+                      <span className="text-huobi-muted">Default currency</span>
+                      <span className="font-medium">HKD</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white rounded-2xl border border-huobi-border p-4 flex flex-col gap-3">
+                  <span className="ty-label-sm text-huobi-muted">Linked funding</span>
+                  <div className="space-y-2 ty-body-sm text-huobi-text">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-huobi-muted">Primary bank</span>
+                      <span className="font-medium">HSBC HK · **** 1234</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-huobi-muted">Default withdrawal</span>
+                      <span className="font-medium">Same as primary</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
       case 'Assets':
         return <AssetsView positions={positions} />;
       default:
@@ -2706,7 +2796,7 @@ export default function App() {
       <Header
         currentView={view}
         onViewChange={handleViewChange}
-        onOpenSettings={() => setIsPersonalCenterOpen(true)}
+        onOpenSettings={() => handleViewChange('Account')}
         onLock={() => setIsLocked(true)}
         onLogout={() => setIsLogoutDialogOpen(true)}
       />
@@ -2736,106 +2826,6 @@ export default function App() {
           ))}
         </AnimatePresence>
       </div>
-
-      {/* Personal Center Drawer */}
-      <DetailDrawer
-        open={isPersonalCenterOpen}
-        onClose={() => setIsPersonalCenterOpen(false)}
-        title="Account Settings"
-        subtitle="Manage your personal information, security and notification preferences."
-      >
-        <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-[auto,1fr] gap-4 items-center">
-            <div className="w-14 h-14 rounded-2xl overflow-hidden bg-huobi-blue/10 flex items-center justify-center">
-              <img src="https://picsum.photos/seed/user/100/100" alt="User" className="w-full h-full object-cover" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="ty-title-md text-huobi-text">James Bond</span>
-              <span className="ty-body-sm text-huobi-muted">Account ID: 8000-123456 · Securities · Base CCY: HKD</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-2xl border border-huobi-border p-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="ty-label-sm text-huobi-muted">Personal information</span>
-              </div>
-              <div className="space-y-2 ty-body-sm text-huobi-text">
-                <div className="flex justify-between gap-3">
-                  <span className="text-huobi-muted">Full name</span>
-                  <span className="font-medium">James Bond</span>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <span className="text-huobi-muted">Email</span>
-                  <span className="font-medium">bond@example.com</span>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <span className="text-huobi-muted">Mobile</span>
-                  <span className="font-medium">+852 6123 4567</span>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <span className="text-huobi-muted">Region</span>
-                  <span className="font-medium">Hong Kong</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-huobi-border p-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="ty-label-sm text-huobi-muted">Security</span>
-              </div>
-              <div className="space-y-2 ty-body-sm text-huobi-text">
-                <div className="flex justify-between items-center gap-3">
-                  <span className="text-huobi-muted">Login password</span>
-                  <button className="ty-body-sm text-huobi-blue hover:underline">Change…</button>
-                </div>
-                <div className="flex justify-between items-center gap-3">
-                  <span className="text-huobi-muted">Two-factor auth</span>
-                  <span className="font-medium text-huobi-up">Enabled</span>
-                </div>
-                <div className="flex justify-between items-center gap-3">
-                  <span className="text-huobi-muted">Last login</span>
-                  <span className="font-medium">Today 10:12 · HK</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-2xl border border-huobi-border p-4 flex flex-col gap-3">
-              <span className="ty-label-sm text-huobi-muted">Preferences</span>
-              <div className="space-y-2 ty-body-sm text-huobi-text">
-                <div className="flex justify-between items-center gap-3">
-                  <span className="text-huobi-muted">Theme</span>
-                  <span className="font-medium">Light</span>
-                </div>
-                <div className="flex justify-between items-center gap-3">
-                  <span className="text-huobi-muted">Notifications</span>
-                  <span className="font-medium">Email + In-app</span>
-                </div>
-                <div className="flex justify-between items-center gap-3">
-                  <span className="text-huobi-muted">Default currency</span>
-                  <span className="font-medium">HKD</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-huobi-border p-4 flex flex-col gap-3">
-              <span className="ty-label-sm text-huobi-muted">Linked funding</span>
-              <div className="space-y-2 ty-body-sm text-huobi-text">
-                <div className="flex justify-between gap-3">
-                  <span className="text-huobi-muted">Primary bank</span>
-                  <span className="font-medium">HSBC HK · **** 1234</span>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <span className="text-huobi-muted">Default withdrawal</span>
-                  <span className="font-medium">Same as primary</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </DetailDrawer>
 
       {/* Logout confirm dialog */}
       <AnimatePresence>

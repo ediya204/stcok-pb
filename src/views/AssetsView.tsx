@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { LayoutGrid, Info, AlertCircle, Clock } from 'lucide-react';
+import { LayoutGrid, Info, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PageHeader, EmptyState, StatusChip, DetailDrawer } from '../components/index';
 import type { Position } from '../constants';
