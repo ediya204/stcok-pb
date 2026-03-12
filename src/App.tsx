@@ -83,7 +83,7 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
                 <TrendingUp className="w-6 h-6 text-white" />
               </div>
               <div className="flex flex-col">
-                <div className="text-white text-xl md:text-2xl font-black tracking-tight">VC Securities</div>
+                <div className="text-white text-xl md:text-2xl font-black tracking-tight">VC Finance</div>
                 <div className="text-white/60 text-[10px] font-black uppercase tracking-[0.25em]">Brokerage Platform</div>
               </div>
             </div>
@@ -766,7 +766,7 @@ const Header = ({ currentView, onViewChange }: { currentView: string, onViewChan
             <TrendingUp className="text-white w-6 h-6" />
           </div>
           <div className="flex flex-col">
-            <span className="text-xl font-black tracking-tighter text-huobi-text leading-none">VC Securities</span>
+            <span className="text-xl font-black tracking-tighter text-huobi-text leading-none">VC Finance</span>
             <span className="text-[10px] font-black text-huobi-muted uppercase tracking-widest">Brokerage Platform</span>
           </div>
         </div>

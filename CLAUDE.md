@@ -3,7 +3,7 @@
 ### Users
 - Primary users are **internal** brokerage/platform operators who work across **desktop and mobile**.
 - Core jobs to be done:
-  - **Market overview** and monitoring (dashboard)
+  - **Account / portfolio overview** and monitoring (dashboard)
   - **Submit trading applications/entrustments** and track status
   - **Stock transfer** workflows (inbound/outbound) including confirmation/processing visibility
   - **Records & export** for auditing/ops follow-up
@@ -19,6 +19,9 @@
 - Theme: **both light and dark** modes.
 - Color constraints: **retain the existing palette** (primary blue + semantic up/down colors), only allow small refinements.
 - Reference vibe: **Robinhood-like modern friendliness** (clean, approachable, crisp) adapted to an internal professional tool.
+- Language: **bilingual (ZH/EN)** with consistent terminology and no random mixing within a single module.
+- Auth: **backend-validated login** (not demo-only); treat unauthenticated state as first-class UX.
+- Compliance: **strict** compliance posture—surface clear controlled-business and auditability cues where appropriate.
 
 ### Design Principles
 1. **Clarity over decoration**: use visuals to explain hierarchy and state; avoid purely ornamental noise.
@@ -26,4 +29,6 @@
 3. **High-signal hierarchy**: bold headlines and compact metadata; keep dense information scannable.
 4. **Responsive by default**: optimize layouts for desktop first, but ensure mobile flows are fully usable.
 5. **Fast, reassuring feedback**: immediate status cues, loading states, and toasts that reduce uncertainty.
+6. **Compliance-first UX**: include controlled-business notices, clear statuses (pending/frozen/settling), and audit-friendly records.
+7. **Bilingual consistency**: prefer a single language per view/module with optional secondary text; keep labels consistent across the app.
 
