@@ -2861,7 +2861,7 @@ export default function App() {
           className={cn("flex flex-col items-center gap-1", view === 'Market' ? "text-huobi-blue" : "text-huobi-muted")}
         >
           <TrendingUp className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Brokerage</span>
+          <span className="text-[10px] font-bold">Market</span>
         </button>
         <button 
           onClick={() => handleViewChange('Trade')}
