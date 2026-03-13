@@ -44,7 +44,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { 
   HK_STOCKS, 
-  generateChartData, 
   type Stock, 
   type TradeRequest, 
   type Position, 
@@ -54,9 +53,10 @@ import {
   type IncomingTransfer,
   type IncomingTransferStatus
 } from './constants';
+import { getSymbolDisplayName } from './utils/symbolMapping';
 import { alltickService, type AlltickTicker } from './services/alltickService';
 import AssetsView from './views/AssetsView';
-import { PageHeader, EmptyState, FilterBar, SummaryBar, DetailDrawer, StatusChip } from './components/index';
+import { PageHeader, EmptyState, FilterBar, SummaryBar, DetailDrawer, StatusChip, TradingViewChartPanel } from './components/index';
 
 const AUTH_STORAGE_KEY = 'vcsecurities:authed';
 /** 默认登录路径 */
@@ -991,11 +991,15 @@ const Header = ({
 );
 };
 
-const MarketList = ({ onSelect, selectedSymbol }: { onSelect: (s: Stock) => void, selectedSymbol: string }) => {
+const MARKET_SYMBOL_LABEL = (symbol: string) => (symbol.endsWith('USDT') ? symbol : `${symbol}.HK`);
+
+const MarketList = ({ list, onSelect, selectedSymbol }: { list: Stock[]; onSelect: (s: Stock) => void; selectedSymbol: string }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const filteredStocks = HK_STOCKS.filter(s => 
-    s.symbol.includes(searchTerm) || s.name.toLowerCase().includes(searchTerm.toLowerCase())
+
+  const filteredStocks = list.filter(
+    (s) =>
+      s.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -1005,9 +1009,9 @@ const MarketList = ({ onSelect, selectedSymbol }: { onSelect: (s: Stock) => void
           <h3 className="text-lg font-black text-huobi-text tracking-tight">Market Assets</h3>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-huobi-muted" />
-            <input 
-              type="text" 
-              placeholder="Search HK Stocks..." 
+            <input
+              type="text"
+              placeholder="Search symbols..."
               className="w-full bg-white border border-huobi-border rounded-2xl py-3 pl-11 pr-4 text-xs font-bold focus:outline-none focus:border-huobi-blue focus:ring-4 focus:ring-huobi-blue/5 transition-all text-huobi-text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -1017,175 +1021,36 @@ const MarketList = ({ onSelect, selectedSymbol }: { onSelect: (s: Stock) => void
       </div>
       <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
         <div className="flex flex-col gap-1">
-          {filteredStocks.map(stock => (
+          {filteredStocks.map((stock) => (
             <button
               key={stock.symbol}
               onClick={() => onSelect(stock)}
               className={cn(
-                "w-full px-4 py-4 flex items-center justify-between rounded-[1.25rem] transition-all group",
-                selectedSymbol === stock.symbol ? "bg-huobi-text text-white shadow-xl shadow-gray-200" : "hover:bg-white hover:shadow-md text-huobi-text"
+                'w-full px-4 py-4 flex items-center justify-between rounded-[1.25rem] transition-all group',
+                selectedSymbol === stock.symbol ? 'bg-huobi-text text-white shadow-xl shadow-gray-200' : 'hover:bg-white hover:shadow-md text-huobi-text'
               )}
             >
               <div className="flex flex-col items-start">
-                <span className="text-sm font-black">{stock.symbol}.HK</span>
-                <span className={cn("text-[10px] font-bold uppercase tracking-wider truncate max-w-[120px]", selectedSymbol === stock.symbol ? "text-white/60" : "text-huobi-muted")}>{stock.name}</span>
+                <span className="text-sm font-black">{MARKET_SYMBOL_LABEL(stock.symbol)}</span>
+                <span className={cn('text-[10px] font-bold uppercase tracking-wider truncate max-w-[120px]', selectedSymbol === stock.symbol ? 'text-white/60' : 'text-huobi-muted')}>{stock.name}</span>
               </div>
               <div className="flex flex-col items-end">
-                <span className={cn("text-sm font-black", selectedSymbol === stock.symbol ? "text-white" : stock.change >= 0 ? "text-huobi-up" : "text-huobi-down")}>
-                  {stock.price.toFixed(2)}
+                <span className={cn('text-sm font-black', selectedSymbol === stock.symbol ? 'text-white' : stock.change >= 0 ? 'text-huobi-up' : 'text-huobi-down')}>
+                  {stock.price > 0 ? stock.price.toFixed(2) : '–'}
                 </span>
-                <div className={cn(
-                  "flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black",
-                  selectedSymbol === stock.symbol ? "bg-white/20 text-white" : stock.change >= 0 ? "bg-huobi-up/10 text-huobi-up" : "bg-huobi-down/10 text-huobi-down"
-                )}>
+                <div
+                  className={cn(
+                    'flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black',
+                    selectedSymbol === stock.symbol ? 'bg-white/20 text-white' : stock.change >= 0 ? 'bg-huobi-up/10 text-huobi-up' : 'bg-huobi-down/10 text-huobi-down'
+                  )}
+                >
                   {stock.change >= 0 ? <ChevronUp className="w-2 h-2" /> : <ChevronDown className="w-2 h-2" />}
-                  {stock.changePercent.toFixed(2)}%
+                  {stock.price > 0 ? `${stock.changePercent.toFixed(2)}%` : '–'}
                 </div>
               </div>
             </button>
           ))}
         </div>
-      </div>
-    </div>
-  );
-};
-
-const TradingChart = ({ stock }: { stock: Stock }) => {
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-
-    const fetchKline = async () => {
-      const data = await alltickService.getKline(stock.symbol, '1min');
-      if (isMounted) {
-        if (data && data.length > 0) {
-          setChartData(data);
-        } else {
-          // Fallback to mock data if API fails or no data
-          setChartData(generateChartData(stock.price));
-        }
-        setLoading(false);
-      }
-    };
-
-    fetchKline();
-
-    // Subscribe to real-time updates to append to chart
-    const unsubscribe = alltickService.subscribe(stock.symbol, (ticker) => {
-      if (isMounted) {
-        setChartData(prev => {
-          const last = prev[prev.length - 1];
-          const newPrice = parseFloat(ticker.last_price);
-          const time = new Date(ticker.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          
-          if (last && last.time === time) {
-            // Update last point
-            const updated = [...prev];
-            updated[updated.length - 1] = { ...last, price: newPrice, close: newPrice };
-            return updated;
-          } else {
-            // Add new point
-            return [...prev, { time, price: newPrice, close: newPrice }].slice(-100);
-          }
-        });
-      }
-    });
-
-    return () => {
-      isMounted = false;
-      unsubscribe();
-    };
-  }, [stock.symbol]);
-  
-  return (
-    <div className="flex-1 flex flex-col bg-white rounded-[2.5rem] border border-huobi-border shadow-sm overflow-hidden m-4 md:m-8">
-      <div className="p-8 flex flex-wrap items-center justify-between gap-6 border-b border-huobi-border/50">
-        <div className="flex items-center gap-6">
-          <div className="w-16 h-16 rounded-2xl bg-huobi-blue/10 flex items-center justify-center p-3">
-            <TrendingUp className="w-8 h-8 text-huobi-blue" />
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-black text-huobi-text tracking-tighter">{stock.symbol}.HK</h1>
-              <span className="px-2 py-0.5 bg-gray-100 text-huobi-muted text-[10px] font-black rounded uppercase">{stock.name}</span>
-            </div>
-            <div className="flex items-center gap-4 mt-1">
-              <span className={cn("text-4xl font-black tracking-tighter", stock.change >= 0 ? "text-huobi-up" : "text-huobi-down")}>
-                {stock.price.toFixed(2)}
-              </span>
-              <div className={cn(
-                "flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black uppercase",
-                stock.change >= 0 ? "bg-huobi-up/10 text-huobi-up" : "bg-huobi-down/10 text-huobi-down"
-              )}>
-                {stock.change >= 0 ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                {stock.changePercent.toFixed(2)}%
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="flex bg-gray-100 p-1.5 rounded-2xl">
-          {['1M', '5M', '15M', '1H', '4H', '1D', '1W'].map(tf => (
-            <button key={tf} className={cn(
-              "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
-              tf === '15M' ? "bg-white text-huobi-text shadow-sm border border-huobi-border" : "text-huobi-muted hover:text-huobi-text"
-            )}>
-              {tf}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="flex-1 min-h-[400px] p-8 relative">
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-10">
-            <div className="w-10 h-10 border-4 border-huobi-blue border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData}>
-            <defs>
-              <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#0066FF" stopOpacity={0.1}/>
-                <stop offset="95%" stopColor="#0066FF" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-            <XAxis dataKey="time" stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} dy={10} />
-            <YAxis domain={['auto', 'auto']} stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} orientation="right" dx={10} />
-            <Tooltip 
-              content={({ active, payload }) => {
-                if (active && payload && payload.length) {
-                  return (
-                    <div className="bg-huobi-text text-white p-4 rounded-2xl shadow-2xl border border-gray-800 backdrop-blur-xl bg-opacity-90">
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">{payload[0].payload.time}</p>
-                      <div className="flex items-center justify-between gap-8">
-                        <span className="text-[10px] text-gray-400 font-bold uppercase">Price</span>
-                        <span className="text-sm font-black text-huobi-up">${payload[0].value?.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            />
-            <Area type="monotone" dataKey="price" stroke="#0066FF" fillOpacity={1} fill="url(#colorPrice)" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#0066FF', stroke: '#fff', strokeWidth: 3 }} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-8 bg-gray-50/50 border-t border-huobi-border">
-        {[
-          { label: 'High', value: stock.high?.toFixed(2) },
-          { label: 'Low', value: stock.low?.toFixed(2) },
-          { label: '24h Vol', value: `${(stock.volume / 1000000).toFixed(2)}M` },
-          { label: 'Market Cap', value: `${(stock.marketCap / 1000000000).toFixed(2)}B` },
-        ].map((stat, idx) => (
-          <div key={idx} className="flex flex-col gap-1">
-            <span className="text-[10px] text-huobi-muted font-black uppercase tracking-widest">{stat.label}</span>
-            <span className="text-lg font-bold text-huobi-text">{stat.value}</span>
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -2045,42 +1910,6 @@ export default function App() {
     }
   });
 
-  useEffect(() => {
-    if (!isAuthed) return;
-    try {
-      localStorage.setItem(AUTH_STORAGE_KEY, 'true');
-    } catch {
-      // ignore
-    }
-  }, [isAuthed]);
-
-  // Subscribe BTCUSDT ticker for quick connectivity check in Market view
-  useEffect(() => {
-    const unsubscribe = alltickService.subscribe('BTCUSDT', (ticker) => {
-      const last = parseFloat(ticker.last_price);
-      const open = parseFloat(ticker.open_price) || last;
-      const changePct = open ? ((last - open) / open) * 100 : 0;
-      setBtcPrice(last);
-      setBtcChangePct(changePct);
-    });
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  // Keep URL in sync with auth status:
-  // - Not authed: always stay on LOGIN_PATH
-  // - Authed: LOGIN_PATH 自动跳到首页 /
-  useEffect(() => {
-    if (!isAuthed && location.pathname !== LOGIN_PATH) {
-      navigate(LOGIN_PATH, { replace: true });
-      return;
-    }
-    if (isAuthed && location.pathname === LOGIN_PATH) {
-      navigate('/', { replace: true });
-    }
-  }, [isAuthed, location.pathname, navigate]);
-
   const pathToView: Record<string, View> = {
     '/': 'Dashboard',
     '/market': 'Market',
@@ -2106,22 +1935,29 @@ export default function App() {
   const view: View = useMemo(() => {
     return pathToView[location.pathname] ?? 'Dashboard';
   }, [location.pathname]);
-  const [selectedStock, setSelectedStock] = useState<Stock>(HK_STOCKS[0]);
+
+  const initialMarketList = useMemo<Stock[]>(() => [
+    ...HK_STOCKS,
+    { symbol: 'BTCUSDT', name: getSymbolDisplayName('BTCUSDT'), price: 0, change: 0, changePercent: 0, volume: 0, lotSize: 1, high: 0, low: 0, marketCap: 0, pe: 0 },
+  ], []);
+  const [marketItems, setMarketItems] = useState<Stock[]>(initialMarketList);
+  const [selectedStock, setSelectedStock] = useState<Stock>(() => initialMarketList[0]);
+  const [chartInterval, setChartInterval] = useState<'1' | '5' | '15' | '30' | '60' | '240' | 'D' | 'W'>('D');
   const [requests, setRequests] = useState<TradeRequest[]>([]);
   const [incomingTransfers, setIncomingTransfers] = useState<IncomingTransfer[]>(MOCK_INCOMING_TRANSFERS);
   const [positions, setPositions] = useState<Position[]>([
-    { 
-      symbol: '00700', 
-      name: 'Tencent', 
-      total: 1000, 
-      available: 800, 
-      frozen: 100, 
-      processing: 100, 
-      avgPrice: 375.2, 
-      currentPrice: 382.4 
-    }
+    {
+      symbol: '02442',
+      name: 'Easy Smart Group',
+      total: 1000,
+      available: 800,
+      frozen: 100,
+      processing: 100,
+      avgPrice: 375.2,
+      currentPrice: 382.4,
+    },
   ]);
-  const [toasts, setToasts] = useState<{id: number, message: string, type: 'success' | 'error'}[]>([]);
+  const [toasts, setToasts] = useState<{ id: number; message: string; type: 'success' | 'error' }[]>([]);
   const [recordsTypeFilter, setRecordsTypeFilter] = useState<'all' | 'Trade' | 'Transfer'>('all');
   const [recordsSearch, setRecordsSearch] = useState('');
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
@@ -2133,6 +1969,77 @@ export default function App() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [btcPrice, setBtcPrice] = useState<number | null>(null);
   const [btcChangePct, setBtcChangePct] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!isAuthed) return;
+    try {
+      localStorage.setItem(AUTH_STORAGE_KEY, 'true');
+    } catch {
+      // ignore
+    }
+  }, [isAuthed]);
+
+  // Subscribe BTCUSDT ticker for quick connectivity check in Market view
+  useEffect(() => {
+    const unsubscribe = alltickService.subscribe('BTCUSDT', (ticker) => {
+      const last = parseFloat(ticker.last_price);
+      const open = parseFloat(ticker.open_price) || last;
+      const changePct = open ? ((last - open) / open) * 100 : 0;
+      setBtcPrice(last);
+      setBtcChangePct(changePct);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // Subscribe AllTick tickers for Market list + selected symbol live data
+  useEffect(() => {
+    const unsubs: (() => void)[] = [];
+    initialMarketList.forEach((item) => {
+      const unsub = alltickService.subscribe(item.symbol, (ticker) => {
+        const last = parseFloat(ticker.last_price);
+        const open = parseFloat(ticker.open_price) || parseFloat(ticker.prev_close_price) || last;
+        const change = last - open;
+        const changePct = open ? (change / open) * 100 : 0;
+        const high = parseFloat(ticker.high_price) || last;
+        const low = parseFloat(ticker.low_price) || last;
+        const volume = parseFloat(ticker.volume) || 0;
+        setMarketItems((prev) =>
+          prev.map((s) =>
+            s.symbol !== item.symbol
+              ? s
+              : { ...s, price: last, change, changePercent: changePct, high, low, volume }
+          )
+        );
+        setSelectedStock((prev) =>
+          prev.symbol === item.symbol
+            ? { ...prev, price: last, change, changePercent: changePct, high, low, volume }
+            : prev
+        );
+        setPositions((prev) =>
+          prev.map((p) => (p.symbol === item.symbol ? { ...p, currentPrice: last } : p))
+        );
+      });
+      unsubs.push(unsub);
+    });
+    return () => {
+      unsubs.forEach((u) => u());
+    };
+  }, [initialMarketList]);
+
+  // Keep URL in sync with auth status:
+  // - Not authed: always stay on LOGIN_PATH
+  // - Authed: LOGIN_PATH 自动跳到首页 /
+  useEffect(() => {
+    if (!isAuthed && location.pathname !== LOGIN_PATH) {
+      navigate(LOGIN_PATH, { replace: true });
+      return;
+    }
+    if (isAuthed && location.pathname === LOGIN_PATH) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthed, location.pathname, navigate]);
 
   const LOCK_PASSWORD = 'bond007';
 
@@ -2214,36 +2121,6 @@ export default function App() {
     }
   };
 
-  // Must run every render (before any early return) to satisfy Rules of Hooks
-  useEffect(() => {
-    if (!isAuthed) return;
-    const unsubscribe = alltickService.subscribe(selectedStock.symbol, (ticker) => {
-      const newPrice = parseFloat(ticker.last_price);
-      const openPrice = parseFloat(ticker.open_price) || (newPrice - (Math.random() * 2));
-      const change = newPrice - openPrice;
-      const changePercent = (change / openPrice) * 100;
-
-      setSelectedStock(prev => ({
-        ...prev,
-        price: newPrice,
-        change: change,
-        changePercent: changePercent,
-        high: parseFloat(ticker.high_price) || prev.high,
-        low: parseFloat(ticker.low_price) || prev.low,
-        volume: parseFloat(ticker.volume) || prev.volume
-      }));
-
-      setPositions(prev => prev.map(p => {
-        if (p.symbol === selectedStock.symbol) {
-          return { ...p, currentPrice: newPrice };
-        }
-        return p;
-      }));
-    });
-
-    return () => unsubscribe();
-  }, [isAuthed, selectedStock.symbol]);
-
   if (!isAuthed) {
     return <LoginView onLogin={() => setIsAuthed(true)} />;
   }
@@ -2255,8 +2132,8 @@ export default function App() {
       case 'Market':
         return (
           <div className="flex flex-1 overflow-hidden bg-huobi-bg">
-            {/* Left: Asset list */}
-            <MarketList onSelect={setSelectedStock} selectedSymbol={selectedStock.symbol} />
+            {/* Left: Asset list (AllTick live data) */}
+            <MarketList list={marketItems} onSelect={setSelectedStock} selectedSymbol={selectedStock.symbol} />
 
             {/* Right: Trading workspace */}
             <div className="flex-1 min-w-0 flex flex-col">
@@ -2266,7 +2143,7 @@ export default function App() {
                   <div className="text-[10px] font-black text-huobi-blue uppercase tracking-[0.25em]">Trading Workspace</div>
                   <div className="flex items-baseline gap-3 flex-wrap">
                     <span className="text-xl md:text-2xl font-black text-huobi-text tracking-tight">
-                      {selectedStock.symbol}.HK
+                      {MARKET_SYMBOL_LABEL(selectedStock.symbol)}
                     </span>
                     <span className="text-sm text-huobi-muted font-bold">{selectedStock.name}</span>
                   </div>
@@ -2278,7 +2155,7 @@ export default function App() {
                       "text-lg font-black tracking-tight",
                       selectedStock.change >= 0 ? "text-huobi-up" : "text-huobi-down"
                     )}>
-                      {selectedStock.price.toFixed(2)} HKD
+                      {selectedStock.price > 0 ? `${selectedStock.price.toFixed(2)} ${selectedStock.symbol.endsWith('USDT') ? 'USDT' : 'HKD'}` : '–'}
                     </span>
                   </div>
                   <div className="flex flex-col">
@@ -2287,13 +2164,13 @@ export default function App() {
                       "font-black",
                       selectedStock.change >= 0 ? "text-huobi-up" : "text-huobi-down"
                     )}>
-                      {selectedStock.change >= 0 ? '+' : ''}{selectedStock.change.toFixed(2)} ({selectedStock.changePercent.toFixed(2)}%)
+                      {selectedStock.price > 0 ? `${selectedStock.change >= 0 ? '+' : ''}${selectedStock.change.toFixed(2)} (${selectedStock.changePercent.toFixed(2)}%)` : '–'}
                     </span>
                   </div>
                   <div className="hidden sm:flex flex-col">
                     <span className="text-huobi-muted uppercase tracking-widest">Day Range</span>
                     <span className="text-huobi-text font-mono">
-                      {selectedStock.low.toFixed(2)} – {selectedStock.high.toFixed(2)}
+                      {selectedStock.price > 0 ? `${selectedStock.low.toFixed(2)} – ${selectedStock.high.toFixed(2)}` : '–'}
                     </span>
                   </div>
                   {btcPrice !== null && (
@@ -2310,21 +2187,51 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Main 3-column workspace */}
-              <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 p-4 md:p-6">
-                {/* Center: chart / market info */}
-                <div className="flex-[2] min-w-0 flex">
-                  <TradingChart stock={selectedStock} />
-                </div>
-
-                {/* Right: order entry */}
-                <div className="w-full lg:w-[380px] xl:w-[410px] flex-shrink-0">
-                  <RequestEntry
-                    stock={selectedStock}
-                    onCreateRequest={handleCreateRequest}
-                    initialMode="Trade"
-                    position={positions.find(p => p.symbol === selectedStock.symbol)}
-                  />
+              {/* Main workspace: chart only (order form removed) */}
+              <div className="flex-1 min-h-0 flex flex-col gap-4 p-4 md:p-6">
+                {/* TradingView K-line chart */}
+                <div className="min-w-0 flex flex-col bg-white rounded-[2.5rem] border border-huobi-border shadow-sm overflow-hidden m-4 md:m-8">
+                  <div className="flex flex-wrap items-center justify-between gap-4 p-4 md:p-6 border-b border-huobi-border/50">
+                    <div className="flex items-center gap-2">
+                      <div className="w-12 h-12 rounded-xl bg-huobi-blue/10 flex items-center justify-center">
+                        <TrendingUp className="w-6 h-6 text-huobi-blue" />
+                      </div>
+                      <div>
+                        <h2 className="ty-title-md font-black text-huobi-text">{MARKET_SYMBOL_LABEL(selectedStock.symbol)}</h2>
+                        <p className="ty-label-sm text-huobi-muted">{selectedStock.name}</p>
+                      </div>
+                    </div>
+                    <div className="flex bg-gray-100 p-1.5 rounded-2xl">
+                      {(['1', '5', '15', '30', '60', '240', 'D', 'W'] as const).map((tf) => (
+                        <button
+                          key={tf}
+                          onClick={() => setChartInterval(tf)}
+                          className={cn(
+                            'px-3 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all',
+                            chartInterval === tf ? 'bg-white text-huobi-text shadow-sm border border-huobi-border' : 'text-huobi-muted hover:text-huobi-text'
+                          )}
+                        >
+                          {tf === '240' ? '4H' : tf === 'D' ? '1D' : tf === 'W' ? '1W' : `${tf}M`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-h-[360px]">
+                    <TradingViewChartPanel symbol={selectedStock.symbol} interval={chartInterval} theme="light" height="100%" />
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 md:p-6 bg-gray-50/50 border-t border-huobi-border">
+                    {[
+                      { label: 'High', value: selectedStock.price > 0 ? selectedStock.high.toFixed(2) : '–' },
+                      { label: 'Low', value: selectedStock.price > 0 ? selectedStock.low.toFixed(2) : '–' },
+                      { label: '24h Vol', value: selectedStock.volume > 0 ? `${(selectedStock.volume / 1e6).toFixed(2)}M` : '–' },
+                      { label: 'Market Cap', value: selectedStock.marketCap > 0 ? `${(selectedStock.marketCap / 1e9).toFixed(2)}B` : '–' },
+                    ].map((stat, idx) => (
+                      <div key={idx} className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-huobi-muted font-black uppercase tracking-widest">{stat.label}</span>
+                        <span className="ty-title-sm text-huobi-text">{stat.value}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 

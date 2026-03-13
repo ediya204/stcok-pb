@@ -1,19 +1,7 @@
 
-export interface AlltickTicker {
-  symbol: string;
-  last_price: string;
-  open_price: string;
-  high_price: string;
-  low_price: string;
-  prev_close_price: string;
-  volume: string;
-  timestamp: number;
-}
-
-type TickerCallback = (data: AlltickTicker) => void;
-
 class AlltickService {
   private ws: WebSocket | null = null;
+  private heartbeatTimer: number | null = null;
   // 优先使用 VITE_ALLTICK_API_KEY，其次兼容 VITE_TICKAPI（对应你在平台上配置的 tickapi）
   private token: string =
     (import.meta as any).env.VITE_ALLTICK_API_KEY ||
@@ -31,26 +19,64 @@ class AlltickService {
   }
 
   private connect() {
-    const url = `wss://quote.alltick.co/quote-b-ws-api?token=${this.token}`;
+    // 股票专用 websocket 通道
+    const url = `wss://quote.alltick.co/quote-stock-b-ws-api?token=${this.token}`;
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
-      console.log('Alltick WebSocket connected');
+      console.log('Alltick stock WebSocket connected');
       this.reconnectAttempts = 0;
+
+      // 启动心跳（官方要求 10s 一次，30s 内无心跳会断开）
+      if (this.heartbeatTimer !== null) {
+        clearInterval(this.heartbeatTimer);
+      }
+      this.heartbeatTimer = window.setInterval(() => {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+        const heartbeat = {
+          cmd_id: 22000,
+          seq_id: Date.now(),
+          trace: `hb-${Date.now()}`,
+          data: {},
+        };
+        this.ws.send(JSON.stringify(heartbeat));
+      }, 10_000);
+
       // Re-subscribe to existing symbols
-      this.subscribedSymbols.forEach(symbol => {
-        this.sendSubscription(symbol);
-      });
+      if (this.subscribedSymbols.size > 0) {
+        this.sendSubscription(Array.from(this.subscribedSymbols));
+      }
     };
 
     this.ws.onmessage = (event) => {
       try {
-        const response = JSON.parse(event.data);
-        if (response.cmd === 'push' && response.msg_type === 'ticker') {
-          const data = response.data as AlltickTicker;
-          const symbolCallbacks = this.callbacks.get(data.symbol);
-          if (symbolCallbacks) {
-            symbolCallbacks.forEach(cb => cb(data));
+        const msg = JSON.parse(event.data);
+
+        // 股票 tick 推送（示例协议：cmd_id 22998，data.code / data.price 等）
+        if (msg.cmd_id === 22998 && msg.data && msg.data.code && msg.data.price) {
+          const code: string = msg.data.code; // 例如 "2442.HK"
+          const last = String(msg.data.price);
+          const open = String(msg.data.open_price ?? last);
+          const high = String(msg.data.high_price ?? last);
+          const low = String(msg.data.low_price ?? last);
+          const prevClose = String(msg.data.prev_close_price ?? open);
+          const volume = String(msg.data.volume ?? '0');
+          const ts = Number(msg.data.tick_time ?? Date.now() / 1000);
+
+          const symbolCallbacks = this.callbacks.get(code);
+          if (symbolCallbacks && symbolCallbacks.length > 0) {
+            symbolCallbacks.forEach(cb =>
+              cb({
+                symbol: code,
+                last_price: last,
+                open_price: open,
+                high_price: high,
+                low_price: low,
+                prev_close_price: prevClose,
+                volume,
+                timestamp: ts,
+              }),
+            );
           }
         }
       } catch (e) {
@@ -59,7 +85,11 @@ class AlltickService {
     };
 
     this.ws.onclose = () => {
-      console.log('Alltick WebSocket closed');
+      console.log('Alltick stock WebSocket closed');
+      if (this.heartbeatTimer !== null) {
+        clearInterval(this.heartbeatTimer);
+        this.heartbeatTimer = null;
+      }
       if (this.reconnectAttempts < this.maxReconnectAttempts) {
         this.reconnectAttempts++;
         setTimeout(() => this.connect(), 2000 * this.reconnectAttempts);
@@ -72,26 +102,34 @@ class AlltickService {
   }
 
   private sendSubscription(symbol: string) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const msg = {
-        cmd: 'subscribe',
-        args: [`ticker.${symbol}`]
-      };
-      this.ws.send(JSON.stringify(msg));
-    }
+    this.sendSubscription([symbol]);
+  }
+
+  private sendSubscription(symbols: string[]) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || symbols.length === 0) return;
+
+    const payload = {
+      cmd_id: 22004,
+      seq_id: Date.now(),
+      trace: `sub-${Date.now()}`,
+      data: {
+        symbol_list: symbols.map(code => ({ code })),
+      },
+    };
+
+    this.ws.send(JSON.stringify(payload));
   }
 
   subscribe(symbol: string, callback: TickerCallback) {
     const formattedSymbol = this.formatSymbol(symbol);
     
-    if (!this.callbacks.has(formattedSymbol)) {
-      this.callbacks.set(formattedSymbol, []);
-    }
-    this.callbacks.get(formattedSymbol)?.push(callback);
+    const existing = this.callbacks.get(formattedSymbol) ?? [];
+    existing.push(callback);
+    this.callbacks.set(formattedSymbol, existing);
 
     if (!this.subscribedSymbols.has(formattedSymbol)) {
       this.subscribedSymbols.add(formattedSymbol);
-      this.sendSubscription(formattedSymbol);
+      this.sendSubscription([formattedSymbol]);
     }
 
     return () => this.unsubscribe(symbol, callback);
@@ -115,7 +153,7 @@ class AlltickService {
   }
 
   private formatSymbol(symbol: string): string {
-    // 纯数字按港股代码处理，例如 "00700" -> "700.HK"
+    // 纯数字按港股代码处理，使用实际交易代码 + .HK，例如 "02442" -> "2442.HK"
     if (/^\d+$/.test(symbol)) {
       const num = parseInt(symbol, 10);
       if (!Number.isNaN(num)) {
@@ -128,19 +166,45 @@ class AlltickService {
 
   async getKline(symbol: string, type: string = '1min'): Promise<any[]> {
     const formattedSymbol = this.formatSymbol(symbol);
-    const url = `https://quote.alltick.co/quote-b-api/kline?token=${this.token}&symbol=${formattedSymbol}&kline_type=${type}`;
+    // 股票 K 线接口：quote-stock-b-api/kline
+    const klineTypeMap: Record<string, number> = {
+      '1min': 1,
+      '5min': 5,
+      '15min': 15,
+      '60min': 60,
+      '1d': 1440,
+    };
+    const kType = klineTypeMap[type] ?? 1;
+
+    const query = encodeURIComponent(
+      JSON.stringify({
+        trace: `k-${Date.now()}`,
+        data: {
+          code: formattedSymbol, // 例如 "2442.HK"
+          kline_type: kType,
+          kline_timestamp_end: 0,
+          query_kline_num: 200,
+          adjust_type: 0,
+        },
+      }),
+    );
+
+    const url = `https://quote.alltick.co/quote-stock-b-api/kline?token=${this.token}&query=${query}`;
     
     try {
       const response = await fetch(url);
       const result = await response.json();
-      if (result.code === 200 && result.data) {
-        return result.data.map((item: any) => ({
-          time: new Date(item.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          open: parseFloat(item.open),
-          close: parseFloat(item.close),
-          high: parseFloat(item.high),
-          low: parseFloat(item.low),
-          volume: parseFloat(item.volume)
+      if (result.ret === 200 && result.data && Array.isArray(result.data.kline_list)) {
+        return result.data.kline_list.map((item: any) => ({
+          time: new Date(Number(item.timestamp) * 1000).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          open: parseFloat(item.open_price),
+          close: parseFloat(item.close_price),
+          high: parseFloat(item.high_price),
+          low: parseFloat(item.low_price),
+          volume: parseFloat(item.volume ?? '0'),
         }));
       }
     } catch (e) {

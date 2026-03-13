@@ -13,7 +13,7 @@ export interface Stock {
 }
 
 export const HK_STOCKS: Stock[] = [
-  { symbol: "00700", name: "Tencent", price: 382.4, change: 5.2, changePercent: 1.38, volume: 12500000, lotSize: 100, high: 385.0, low: 378.2, marketCap: 3600000000000, pe: 25.4 },
+  { symbol: "02442", name: "Easy Smart Group", price: 1.28, change: 0.03, changePercent: 2.40, volume: 2500000, lotSize: 2000, high: 1.30, low: 1.20, marketCap: 640000000, pe: 10.5 },
   { symbol: "09988", name: "Alibaba", price: 72.15, change: -1.2, changePercent: -1.64, volume: 45200000, lotSize: 100, high: 74.0, low: 71.5, marketCap: 1400000000000, pe: 12.8 },
   { symbol: "03690", name: "Meituan", price: 115.8, change: 2.3, changePercent: 2.03, volume: 18100000, lotSize: 100, high: 118.5, low: 112.4, marketCap: 720000000000, pe: 45.2 },
   { symbol: "01211", name: "BYD Company", price: 215.6, change: 4.8, changePercent: 2.28, volume: 5400000, lotSize: 500, high: 218.0, low: 210.5, marketCap: 620000000000, pe: 18.5 },
@@ -56,8 +56,8 @@ export interface IncomingTransfer {
 export const MOCK_INCOMING_TRANSFERS: IncomingTransfer[] = [
   {
     id: 'INC-001',
-    symbol: '00700',
-    name: 'Tencent',
+    symbol: '02442',
+    name: 'Easy Smart Group',
     amount: 500,
     counterpartyCode: 'CP8801',
     counterpartyName: 'Goldman Sachs HK',

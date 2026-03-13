@@ -7,3 +7,4 @@ export { StatusChip } from './StatusChip';
 export { DetailDrawer } from './DetailDrawer';
 export { SummaryBar } from './SummaryBar';
 export type { SummaryItem } from './SummaryBar';
+export { TradingViewChartPanel } from './TradingViewChartPanel';
