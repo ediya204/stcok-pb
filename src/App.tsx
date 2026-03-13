@@ -1706,12 +1706,12 @@ const PortfolioTabs = ({ requests, positions, onCancelRequest }: { requests: Tra
 
 type IncomingStatusFilter = 'all' | 'Pending Response' | 'Processing' | 'Completed' | 'Rejected';
 
-const IncomingTransfersView = ({ 
-  transfers, 
-  onAction 
-}: { 
-  transfers: IncomingTransfer[], 
-  onAction: (id: string, action: 'Accept' | 'Reject') => void 
+const IncomingTransfersView = ({
+  transfers,
+  onAction,
+}: {
+  transfers: IncomingTransfer[];
+  onAction: (id: string, action: 'Accept' | 'Reject') => void;
 }) => {
   const [selectedTransfer, setSelectedTransfer] = useState<IncomingTransfer | null>(null);
   const [statusFilter, setStatusFilter] = useState<IncomingStatusFilter>('all');
@@ -1944,6 +1944,36 @@ const IncomingTransfersView = ({
         )}
       </AnimatePresence>
     </div>
+  );
+};
+
+const SiteFooter = () => {
+  const year = new Date().getFullYear();
+  return (
+    <footer className="border-t border-huobi-border/60 bg-[#F9FAFB] text-[10px] md:text-xs text-huobi-muted">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex flex-col md:flex-row items-center justify-between gap-2">
+        <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3 text-center md:text-left">
+          <span className="font-semibold text-huobi-text">
+            © {year} Virtu Capital Finance Limited.
+          </span>
+          <span>All rights reserved.</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 justify-center md:justify-end">
+          <button type="button" className="hover:text-huobi-text underline-offset-2 hover:underline">
+            Privacy Policy
+          </button>
+          <button type="button" className="hover:text-huobi-text underline-offset-2 hover:underline">
+            Terms &amp; Conditions
+          </button>
+          <button type="button" className="hover:text-huobi-text underline-offset-2 hover:underline">
+            Risk Disclosure
+          </button>
+          <button type="button" className="hover:text-huobi-text underline-offset-2 hover:underline">
+            Cookies
+          </button>
+        </div>
+      </div>
+    </footer>
   );
 };
 
@@ -2848,9 +2878,14 @@ export default function App() {
       />
       
       <main className="flex flex-1 overflow-hidden relative pb-14 lg:pb-0">
-        <AnimatePresence mode="wait">
-          {renderContent()}
-        </AnimatePresence>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-hidden">
+            <AnimatePresence mode="wait">
+              {renderContent()}
+            </AnimatePresence>
+          </div>
+          <SiteFooter />
+        </div>
       </main>
       
       {/* Toasts */}
