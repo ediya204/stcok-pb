@@ -2774,7 +2774,7 @@ export default function App() {
         onLogout={() => setIsLogoutDialogOpen(true)}
       />
       
-      <main className="flex flex-1 overflow-hidden relative">
+      <main className="flex flex-1 overflow-hidden relative pb-14 lg:pb-0">
         <AnimatePresence mode="wait">
           {renderContent()}
         </AnimatePresence>
@@ -2848,7 +2848,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Mobile Footer */}
-      <div className="lg:hidden h-14 border-t border-huobi-border bg-huobi-card flex items-center justify-around px-4">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-14 border-t border-huobi-border bg-huobi-card flex items-center justify-around px-4 z-[90]">
         <button 
           onClick={() => handleViewChange('Market')}
           className={cn("flex flex-col items-center gap-1", view === 'Market' ? "text-huobi-blue" : "text-huobi-muted")}
