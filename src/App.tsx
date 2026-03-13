@@ -2930,8 +2930,13 @@ export default function App() {
           <span className="text-[10px] font-bold">Home</span>
         </button>
         <button 
-          onClick={() => handleViewChange('TransferOut')}
-          className={cn("flex flex-col items-center gap-1", view === 'TransferOut' ? "text-huobi-blue" : "text-huobi-muted")}
+          onClick={() => handleViewChange('Brokerage')}
+          className={cn(
+            "flex flex-col items-center gap-1",
+            (view === 'Brokerage' || view === 'Market' || view === 'TransferOut' || view === 'Incoming' || view === 'Records')
+              ? "text-huobi-blue"
+              : "text-huobi-muted"
+          )}
         >
           <TrendingUp className="w-5 h-5" />
           <span className="text-[10px] font-bold">Brokerage</span>
