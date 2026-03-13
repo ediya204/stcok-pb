@@ -2332,7 +2332,7 @@ export default function App() {
                   ]}
                 />
               )}
-              <div className="relative z-0 bg-huobi-card border border-huobi-border rounded-2xl overflow-visible shadow-2xl">
+              <div className="relative z-0">
                 <RequestEntry 
                   stock={selectedStock} 
                   onStockChange={setSelectedStock}
@@ -2382,7 +2382,7 @@ export default function App() {
                   ]}
                 />
               )}
-              <div className="relative z-0 bg-huobi-card border border-huobi-border rounded-2xl overflow-visible shadow-2xl">
+              <div className="relative z-0">
                 <RequestEntry 
                   stock={selectedStock} 
                   onStockChange={setSelectedStock}
