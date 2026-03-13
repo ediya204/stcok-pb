@@ -55,10 +55,10 @@ import {
 } from './constants';
 import { getSymbolDisplayName } from './utils/symbolMapping';
 import { alltickService, type AlltickTicker } from './services/alltickService';
+import { supabase } from './lib/supabaseClient';
 import AssetsView from './views/AssetsView';
 import { PageHeader, EmptyState, FilterBar, SummaryBar, DetailDrawer, StatusChip, TradingViewChartPanel } from './components/index';
 
-const AUTH_STORAGE_KEY = 'vcsecurities:authed';
 /** 默认登录路径 */
 const LOGIN_PATH = '/login';
 
@@ -67,20 +67,43 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [loading, setLoading] = useState(false);
 
-  const submit = (e?: React.FormEvent) => {
+  const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setError(null);
     if (!username.trim() || !password) {
       setError('请输入用户名与密码');
       return;
     }
-    if (remember) {
-      localStorage.setItem(AUTH_STORAGE_KEY, 'true');
-    } else {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
+
+    try {
+      setLoading(true);
+      if (mode === 'signin') {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: username.trim(),
+          password,
+        });
+        if (signInError) throw signInError;
+      } else {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: username.trim(),
+          password,
+          options: {
+            data: {
+              display_name: username.trim(),
+            },
+          },
+        });
+        if (signUpError) throw signUpError;
+      }
+      onLogin();
+    } catch (err: any) {
+      setError(err?.message ?? '登录失败，请稍后再试');
+    } finally {
+      setLoading(false);
     }
-    onLogin();
   };
 
   return (
@@ -133,11 +156,40 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
 
         {/* Form */}
         <div className="lg:col-span-5 bg-white rounded-[2.5rem] border border-huobi-border shadow-2xl p-8 md:p-10 flex flex-col justify-between gap-8">
-          <div className="flex flex-col gap-2">
-            <div className="text-[10px] font-black text-huobi-blue uppercase tracking-[0.25em]">Sign in</div>
-            <div className="text-3xl font-black text-huobi-text tracking-tight">登录</div>
-            <div className="text-sm text-huobi-muted leading-relaxed">
-              使用你的内部账号进入系统。
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest",
+                  mode === 'signin'
+                    ? "bg-huobi-text text-white"
+                    : "bg-huobi-card text-huobi-muted border border-huobi-border"
+                )}
+                onClick={() => setMode('signin')}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest",
+                  mode === 'signup'
+                    ? "bg-huobi-text text-white"
+                    : "bg-huobi-card text-huobi-muted border border-huobi-border"
+                )}
+                onClick={() => setMode('signup')}
+              >
+                Sign up
+              </button>
+            </div>
+            <div className="flex flex-col gap-1">
+              <div className="text-3xl font-black text-huobi-text tracking-tight">
+                {mode === 'signin' ? '登录' : '创建账户'}
+              </div>
+              <div className="text-sm text-huobi-muted leading-relaxed">
+                使用你的邮箱账号进入 VC Finance 交易工作台。
+              </div>
             </div>
           </div>
 
@@ -197,9 +249,10 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
 
             <button
               type="submit"
-              className="mt-2 w-full py-4 bg-huobi-text text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200"
+              disabled={loading}
+              className="mt-2 w-full py-4 bg-huobi-text text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200 disabled:opacity-60"
             >
-              Sign in
+              {loading ? 'Processing…' : mode === 'signin' ? 'Sign in' : 'Sign up'}
             </button>
 
             <div className="text-[10px] text-huobi-muted font-bold leading-relaxed">
@@ -1902,13 +1955,32 @@ const IncomingTransfersView = ({
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isAuthed, setIsAuthed] = useState(() => {
-    try {
-      return localStorage.getItem(AUTH_STORAGE_KEY) === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [isAuthed, setIsAuthed] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Initialize Supabase auth session & listen for changes
+  useEffect(() => {
+    let mounted = true;
+
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      setIsAuthed(!!data.session);
+
+      supabase.auth.onAuthStateChange((_event, session) => {
+        if (!mounted) return;
+        setIsAuthed(!!session);
+      });
+
+      setAuthLoading(false);
+    };
+
+    void init();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const pathToView: Record<string, View> = {
     '/': 'Dashboard',
@@ -1970,15 +2042,6 @@ export default function App() {
   const [btcPrice, setBtcPrice] = useState<number | null>(null);
   const [btcChangePct, setBtcChangePct] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!isAuthed) return;
-    try {
-      localStorage.setItem(AUTH_STORAGE_KEY, 'true');
-    } catch {
-      // ignore
-    }
-  }, [isAuthed]);
-
   // Subscribe BTCUSDT ticker for quick connectivity check in Market view
   useEffect(() => {
     const unsubscribe = alltickService.subscribe('BTCUSDT', (ticker) => {
@@ -2032,6 +2095,7 @@ export default function App() {
   // - Not authed: always stay on LOGIN_PATH
   // - Authed: LOGIN_PATH 自动跳到首页 /
   useEffect(() => {
+    if (authLoading) return;
     if (!isAuthed && location.pathname !== LOGIN_PATH) {
       navigate(LOGIN_PATH, { replace: true });
       return;
@@ -2039,7 +2103,7 @@ export default function App() {
     if (isAuthed && location.pathname === LOGIN_PATH) {
       navigate('/', { replace: true });
     }
-  }, [isAuthed, location.pathname, navigate]);
+  }, [authLoading, isAuthed, location.pathname, navigate]);
 
   const LOCK_PASSWORD = 'bond007';
 
@@ -2121,8 +2185,16 @@ export default function App() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#F3F4F6]">
+        <div className="w-9 h-9 border-4 border-huobi-blue border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (!isAuthed) {
-    return <LoginView onLogin={() => setIsAuthed(true)} />;
+    return <LoginView onLogin={() => { /* Supabase onAuthStateChange will flip isAuthed */ }} />;
   }
 
   const renderContent = () => {
@@ -2762,11 +2834,10 @@ export default function App() {
                   onClick={async () => {
                     setIsLoggingOut(true);
                     try {
-                      localStorage.removeItem(AUTH_STORAGE_KEY);
+                      await supabase.auth.signOut();
                     } catch {
                       // ignore
                     }
-                    setIsAuthed(false);
                     setIsLoggingOut(false);
                     setIsLogoutDialogOpen(false);
                     navigate(LOGIN_PATH, { replace: true });
