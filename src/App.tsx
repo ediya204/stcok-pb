@@ -185,10 +185,10 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
             </div>
             <div className="flex flex-col gap-1">
               <div className="text-3xl font-black text-huobi-text tracking-tight">
-                {mode === 'signin' ? '登录' : '创建账户'}
+                {mode === 'signin' ? '登录 VC Finance' : '开立 VC Finance 账户'}
               </div>
               <div className="text-sm text-huobi-muted leading-relaxed">
-                使用你的邮箱账号进入 VC Finance 交易工作台。
+                使用企业分配或合规审批通过的邮箱登录，访问你的账户总览、交易工作台与资金记录。
               </div>
             </div>
           </div>
@@ -255,9 +255,6 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
               {loading ? 'Processing…' : mode === 'signin' ? 'Sign in' : 'Sign up'}
             </button>
 
-            <div className="text-[10px] text-huobi-muted font-bold leading-relaxed">
-              提示：当前为演示登录（仅做前端状态门禁），不会校验真实后端身份。
-            </div>
           </form>
         </div>
       </div>
