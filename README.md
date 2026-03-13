@@ -2,11 +2,9 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# VC Finance · Portfolio & Trading Workspace
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/4dfb6907-05d5-4d81-b7fc-80d8a6c0d922
+This project contains a Vite + React front‑end for the VC Finance portfolio dashboard and trading workspace.
 
 ## Run Locally
 
@@ -15,6 +13,6 @@ View your app in AI Studio: https://ai.studio/apps/4dfb6907-05d5-4d81-b7fc-80d8a
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Create a `.env.local` with the required keys (for example Supabase auth, market data APIs).
 3. Run the app:
    `npm run dev`

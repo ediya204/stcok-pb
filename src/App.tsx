@@ -128,9 +128,6 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
                 Secure <br />
                 <span className="text-white/60">Account Access</span>
               </div>
-              <div className="text-white/70 text-sm leading-relaxed max-w-lg">
-                登录后即可查看账户总览、持仓分布、资金状态、在途结算与待办提醒。所有页面风格与交互保持一致、克制且专业。
-              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -382,12 +379,12 @@ const DashboardView = () => {
         {/* Hero Summary */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] font-black text-huobi-blue uppercase tracking-[0.2em]">Overview</span>
+            <span className="text-[10px] font-black text-huobi-blue uppercase tracking-[0.2em]">Account</span>
             <h1 className="text-4xl md:text-6xl font-bold text-huobi-text tracking-tighter leading-[0.95]">
-              Account <span className="text-huobi-muted/40">Overview</span>
+              Portfolio <span className="text-huobi-muted/40">Monitor</span>
             </h1>
             <p className="text-sm text-huobi-muted max-w-2xl leading-relaxed">
-              Real-time account snapshot across holdings, cash, pending settlements and recent activities.
+              实时掌握你的总资产、持仓、资金在途与待处理指令，在同一页面完成监控与决策，不再像测试环境那样零散。
             </p>
           </div>
 
