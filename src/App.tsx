@@ -384,7 +384,7 @@ const DashboardView = () => {
               Portfolio <span className="text-huobi-muted/40">Monitor</span>
             </h1>
             <p className="text-sm text-huobi-muted max-w-2xl leading-relaxed">
-              实时掌握你的总资产、持仓、资金在途与待处理指令，在同一页面完成监控与决策，不再像测试环境那样零散。
+              实时掌握你的总资产、持仓、资金在途与待处理指令，在同一页面完成监控与决策。
             </p>
           </div>
 
