@@ -1950,7 +1950,7 @@ const IncomingTransfersView = ({
 const SiteFooter = () => {
   const year = new Date().getFullYear();
   return (
-    <footer className="border-t border-huobi-border/60 bg-[#F9FAFB] text-[10px] md:text-xs text-huobi-muted">
+    <footer className="hidden lg:block border-t border-huobi-border/60 bg-[#F9FAFB] text-[10px] md:text-xs text-huobi-muted">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex flex-col md:flex-row items-center justify-between gap-2">
         <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3 text-center md:text-left">
           <span className="font-semibold text-huobi-text">
