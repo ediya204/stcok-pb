@@ -828,21 +828,55 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
                       transfer.
                     </div>
                   ) : (
-                    <div className="p-3 rounded-xl bg-huobi-card border border-huobi-border text-[11px] text-huobi-muted">
-                      On-chain deposits require network confirmations. You will receive a dedicated wallet address (and memo / tag if applicable) after
-                      submitting this instruction.
+                    <div className="flex flex-col gap-4">
+                      <div className="p-3 rounded-xl bg-huobi-card border border-huobi-border text-[11px] text-huobi-muted">
+                        USDT deposits are credited via the TRON (TRC20) network. Send USDT only to the address below. Do not deposit other tokens or
+                        use non‑TRON networks, otherwise your assets may be permanently lost.
+                      </div>
+                      <div className="rounded-2xl border border-huobi-border bg-white p-3 flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-huobi-muted uppercase tracking-wider">Network</span>
+                          <span className="px-2 py-0.5 rounded-full bg-sky-50 text-[10px] font-bold text-sky-700 uppercase tracking-widest">
+                            TRON · TRC20
+                          </span>
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-huobi-border bg-white p-3 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-huobi-muted uppercase tracking-wider">Deposit address</span>
+                          <button
+                            type="button"
+                            className="px-2 py-1 rounded-md border border-huobi-border text-[10px] font-bold uppercase tracking-widest text-huobi-muted hover:bg-huobi-card"
+                            onClick={() => {
+                              const addr = 'TUSDTdemoAddress1234567890ABCDEF';
+                              navigator.clipboard?.writeText(addr).catch(() => {});
+                            }}
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <div className="font-mono text-[11px] text-huobi-text break-all">
+                          TUSDTdemoAddress1234567890ABCDEF
+                        </div>
+                        <div className="mt-2 flex items-center justify-center">
+                          {/* Demo QR placeholder – replace with real QR when backend is ready */}
+                          <div className="w-28 h-28 rounded-2xl bg-[radial-gradient(circle_at_20%_20%,#22c55e_0,#22c55e_35%,#0f172a_36%,#0f172a_100%)] border border-huobi-border/40 shadow-sm" />
+                        </div>
+                      </div>
                     </div>
                   )}
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleConfirmDeposit}
-                      className="px-6 py-2 rounded-xl bg-huobi-blue text-white text-xs font-bold uppercase tracking-widest hover:bg-huobi-blue/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={!depositAmount}
-                    >
-                      Continue
-                    </button>
-                  </div>
+                  {depositAssetKind === 'Fiat' && (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleConfirmDeposit}
+                        className="px-6 py-2 rounded-xl bg-huobi-blue text-white text-xs font-bold uppercase tracking-widest hover:bg-huobi-blue/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={!depositAmount}
+                      >
+                        Continue
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
               {depositStep === 'summary' && depositAssetKind === 'Fiat' && (

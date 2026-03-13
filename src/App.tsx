@@ -809,6 +809,7 @@ const DashboardView = () => {
 
 type View =
   | 'Dashboard'
+  | 'Brokerage'
   | 'Market'
   | 'Trade'
   | 'TransferOut'
@@ -1978,6 +1979,7 @@ export default function App() {
 
   const pathToView: Record<string, View> = {
     '/': 'Dashboard',
+    '/brokerage': 'Brokerage',
     '/market': 'Market',
     '/trade': 'Trade',
     '/transfer-out': 'TransferOut',
@@ -1989,6 +1991,7 @@ export default function App() {
 
   const viewToPath: Record<View, string> = {
     Dashboard: '/',
+    Brokerage: '/brokerage',
     Market: '/market',
     Trade: '/trade',
     TransferOut: '/transfer-out',
@@ -2195,6 +2198,76 @@ export default function App() {
     switch (view) {
       case 'Dashboard':
         return <DashboardView />;
+      case 'Brokerage':
+        return (
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-huobi-bg p-4 md:p-6">
+            <div className="max-w-5xl mx-auto flex flex-col gap-6">
+              <PageHeader
+                sectionLabel="Trading & Brokerage"
+                title="Brokerage Hub"
+                subtitle="Access market trading, securities transfers and brokerage history from a single workspace."
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  className="bg-white rounded-2xl border border-huobi-border shadow-sm p-4 flex flex-col gap-2 items-start hover:border-huobi-blue transition-colors"
+                  onClick={() => handleViewChange('TransferOut')}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-huobi-blue/10 flex items-center justify-center">
+                    <ArrowRightLeft className="w-4 h-4 text-huobi-blue" />
+                  </div>
+                  <div className="text-sm font-bold text-huobi-text">Transfer Out</div>
+                  <div className="text-[11px] text-huobi-muted">
+                    Deliver stock positions to external brokers or custodians.
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="bg-white rounded-2xl border border-huobi-border shadow-sm p-4 flex flex-col gap-2 items-start hover:border-huobi-blue transition-colors"
+                  onClick={() => handleViewChange('Incoming')}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-huobi-up/10 flex items-center justify-center">
+                    <ArrowUpRight className="w-4 h-4 text-huobi-up" />
+                  </div>
+                  <div className="text-sm font-bold text-huobi-text">Transfer In</div>
+                  <div className="text-[11px] text-huobi-muted">
+                    Receive stock positions into your VC Finance brokerage account.
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="bg-white rounded-2xl border border-huobi-border shadow-sm p-4 flex flex-col gap-2 items-start hover:border-huobi-blue transition-colors"
+                  onClick={() => handleViewChange('Market')}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-huobi-blue/10 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-huobi-blue" />
+                  </div>
+                  <div className="text-sm font-bold text-huobi-text">Market</div>
+                  <div className="text-[11px] text-huobi-muted">
+                    Open the trading workspace to view live prices and submit entrustments.
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="bg-white rounded-2xl border border-huobi-border shadow-sm p-4 flex flex-col gap-2 items-start hover:border-huobi-blue transition-colors"
+                  onClick={() => handleViewChange('Records')}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-huobi-text/10 flex items-center justify-center">
+                    <Clock className="w-4 h-4 text-huobi-text" />
+                  </div>
+                  <div className="text-sm font-bold text-huobi-text">Brokerage History</div>
+                  <div className="text-[11px] text-huobi-muted">
+                    Review transfer requests and brokerage‑related records.
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
       case 'Market':
         return (
           <div className="flex flex-1 overflow-hidden bg-huobi-bg">
@@ -2857,11 +2930,11 @@ export default function App() {
           <span className="text-[10px] font-bold">Home</span>
         </button>
         <button 
-          onClick={() => handleViewChange('Market')}
-          className={cn("flex flex-col items-center gap-1", view === 'Market' ? "text-huobi-blue" : "text-huobi-muted")}
+          onClick={() => handleViewChange('Brokerage')}
+          className={cn("flex flex-col items-center gap-1", view === 'Brokerage' ? "text-huobi-blue" : "text-huobi-muted")}
         >
           <TrendingUp className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Market</span>
+          <span className="text-[10px] font-bold">Brokerage</span>
         </button>
         <button 
           onClick={() => handleViewChange('Trade')}
