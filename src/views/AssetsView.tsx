@@ -407,7 +407,7 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
       { label: 'Total Equity', primary: '1,586,200 HKD', secondary: 'Including HKD cash, securities, USDT & token balances', trend: '+2.4% Today', tone: 'up' },
       { label: 'Available Cash', primary: '1,245,000 HKD', secondary: 'Excluding frozen / processing', trend: 'Stable', tone: 'neutral' },
       { label: 'Holdings Market Value', primary: '191,200 HKD', secondary: 'Equity holdings', trend: '+1.9% Today', tone: 'up' },
-      { label: 'Digital Assets', primary: '150,000 HKD', secondary: 'USDT 100,000 · VC Token 50,000', trend: '+0.8% 1D', tone: 'up' },
+      { label: 'Digital Assets', primary: '100,000 HKD', secondary: 'USDT holdings only', trend: '+0.8% 1D', tone: 'up' },
       { label: 'Unrealized P&L', primary: '34,560 HKD', secondary: 'Across all open positions', trend: '+2.47% 1D', tone: 'up' },
     ],
     []
@@ -419,7 +419,6 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
       { key: 'HK', label: 'Hong Kong Stocks', value: 160_800, pct: 11.2, dayPct: 1.85, color: '#10B981' },
       { key: 'US', label: 'US Stocks', value: 21_500, pct: 1.5, dayPct: -0.42, color: '#6366F1' },
       { key: 'USDT', label: 'USDT', value: 100_000, pct: 6.3, dayPct: 0.35, color: '#22C55E' },
-      { key: 'Token', label: 'VC Token', value: 50_000, pct: 3.3, dayPct: 0.15, color: '#F59E0B' },
     ],
     []
   );
@@ -430,7 +429,6 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
       { label: 'USD Ledger', ccy: 'USD', available: 210_000, frozen: 25_000, processing: 12_000, settling: 7_800 },
       { label: 'CNY Ledger', ccy: 'CNY', available: 55_000, frozen: 5_000, processing: 2_000, settling: 1_400 },
       { label: 'USDT Balance', ccy: 'USDT', available: 100_000, frozen: 10_000, processing: 0, settling: 0 },
-      { label: 'VC Token Balance', ccy: 'VCT', available: 50_000, frozen: 0, processing: 0, settling: 0 },
     ],
     []
   );
@@ -438,15 +436,12 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
   const [pendingApplications, setPendingApplications] = useState<PendingApplication[]>([
     { id: 'APP-230184', type: 'Withdrawal', asset: 'HKD', amount: '100,000', status: 'Processing', submittedAt: 'Today 10:24', eta: 'T+1' },
     { id: 'APP-230183', type: 'USDT Deposit', asset: 'USDT', amount: '20,000', status: 'Pending', submittedAt: 'Today 09:58', eta: 'Awaiting network confirmations' },
-    { id: 'APP-230182', type: 'Exchange USDT → VCT', asset: 'USDT → VCT', amount: '5,000', status: 'Processing', submittedAt: 'Today 09:10', eta: 'Within minutes' },
     { id: 'APP-230172', type: 'Transfer Out', asset: '00700.HK', amount: '500 shares', status: 'Pending', submittedAt: 'Yesterday 14:18', eta: 'Broker review' },
     { id: 'APP-230165', type: 'Deposit', asset: 'USD', amount: '5,000', status: 'Accepted', submittedAt: 'Mar 10 09:05', eta: 'Completed' },
   ]);
 
   const [fundHistory, setFundHistory] = useState<FundHistoryItem[]>([
     { time: 'Today 10:01', type: 'USDT Deposit', ccy: 'USDT', amount: 20_000, status: 'Processing', ref: 'USDT-DP-882913' },
-    { time: 'Today 09:20', type: 'Exchange USDT → VCT', ccy: 'USDT', amount: -5_000, status: 'Completed', ref: 'EX-552301' },
-    { time: 'Today 09:20', type: 'Exchange VCT → USDT', ccy: 'VCT', amount: 5_000, status: 'Completed', ref: 'EX-552301' },
     { time: 'Today 09:15', type: 'Fee', ccy: 'HKD', amount: -120, status: 'Completed', ref: 'FEE-829103' },
     { time: 'Yesterday 16:30', type: 'Dividend', ccy: 'HKD', amount: 2_600, status: 'Completed', ref: 'DIV-233712' },
     { time: 'Mar 10 14:12', type: 'Withdrawal', ccy: 'HKD', amount: -10_000, status: 'Processing', ref: 'WD-993817' },
@@ -457,7 +452,6 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
     () => [
       { time: '10:42', title: 'Dividend credited · 00700.HK', detail: 'HKD 2,600 credited to cash ledger.', tag: 'Income' },
       { time: '10:01', title: 'USDT deposit detected', detail: '20,000 USDT pending confirmations on TRC20.', tag: 'Digital Asset' },
-      { time: '09:20', title: 'Exchange completed · USDT → VCT', detail: '5,000 USDT exchanged into VC Token balance.', tag: 'Exchange' },
     ],
     []
   );
@@ -493,8 +487,8 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
   const [withdrawRef, setWithdrawRef] = useState<string | null>(null);
   const [withdrawSubmittedAt, setWithdrawSubmittedAt] = useState<string | null>(null);
 
-  const [transferFrom, setTransferFrom] = useState<'USDT' | 'VCT'>('USDT');
-  const [transferTo, setTransferTo] = useState<'USDT' | 'VCT'>('VCT');
+  const [transferFrom, setTransferFrom] = useState<'USDT' | 'HKD'>('USDT');
+  const [transferTo, setTransferTo] = useState<'USDT' | 'HKD'>('HKD');
   const [transferAmount, setTransferAmount] = useState('');
   const [transferError, setTransferError] = useState<string | null>(null);
 
@@ -514,7 +508,7 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
     setWithdrawRef(null);
     setWithdrawSubmittedAt(null);
     setTransferFrom('USDT');
-    setTransferTo('VCT');
+    setTransferTo('HKD');
     setTransferAmount('');
     setTransferError(null);
   };
@@ -580,13 +574,13 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
       return;
     }
 
-    // Digital asset deposit (USDT / VC Token) – single-step confirmation
+    // Digital asset deposit (USDT) – single-step confirmation
     const amountNumber = Number(depositAmount);
     const now = new Date();
     const time = now.toLocaleString();
-    const ref = `${depositAssetKind === 'USDT' ? 'USDT' : 'VCT'}-DP-${Date.now().toString().slice(-6)}`;
-    const assetLabel = depositAssetKind === 'USDT' ? 'USDT' : 'VC Token';
-    const typeLabel = depositAssetKind === 'USDT' ? 'USDT Deposit' : 'Token Deposit';
+    const ref = `USDT-DP-${Date.now().toString().slice(-6)}`;
+    const assetLabel = 'USDT';
+    const typeLabel = 'USDT Deposit';
     setPendingApplications(prev => [
       {
         id: `APP-${Date.now().toString().slice(-6)}`,
@@ -625,8 +619,8 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
     const time = now.toLocaleString();
     const ref = `WD-${Date.now().toString().slice(-6)}`;
     const isDigital = withdrawAssetKind !== 'Fiat';
-    const assetLabel = isDigital ? (withdrawAssetKind === 'USDT' ? 'USDT' : 'VC Token') : withdrawCurrency;
-    const typeLabel = isDigital ? (withdrawAssetKind === 'USDT' ? 'USDT Withdrawal' : 'Token Withdrawal') : 'Withdrawal';
+    const assetLabel = isDigital ? 'USDT' : withdrawCurrency;
+    const typeLabel = isDigital ? 'USDT Withdrawal' : 'Withdrawal';
     const eta = isDigital ? 'Within 1 hour (network)' : 'T+1';
 
     setPendingApplications(prev => [
@@ -668,7 +662,6 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
     const amountNumber = Number(transferAmount);
     const now = new Date();
     const time = now.toLocaleString();
-    const ref = `EX-${Date.now().toString().slice(-6)}`;
     setPendingApplications(prev => [
       {
         id: `APP-${Date.now().toString().slice(-6)}`,
@@ -698,7 +691,7 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
   const actionConfig = {
     deposit: { title: 'Deposit Assets', subtitle: 'Add fiat or digital assets to your account' },
     withdraw: { title: 'Withdraw Assets', subtitle: 'Submit a withdrawal request' },
-    transfer: { title: 'Exchange', subtitle: 'Exchange between USDT and VC Token inside your account' },
+    transfer: { title: 'Exchange', subtitle: 'Exchange between USDT and HKD inside your account' },
     export: { title: 'Export Statement', subtitle: 'Download your account statement' },
   };
 
@@ -778,7 +771,7 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
                   <div>
                     <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Asset type</label>
                     <div className="inline-flex rounded-xl bg-huobi-card p-1">
-                      {(['Fiat', 'USDT', 'Token'] as const).map(kind => (
+                      {(['Fiat', 'USDT'] as const).map(kind => (
                         <button
                           key={kind}
                           type="button"
@@ -788,13 +781,13 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
                             depositAssetKind === kind ? 'bg-huobi-text text-white' : 'text-huobi-muted'
                           )}
                         >
-                          {kind === 'Fiat' ? 'Fiat' : kind === 'USDT' ? 'USDT' : 'VC Token'}
+                          {kind === 'Fiat' ? 'Fiat' : 'USDT'}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Currency</label>
+                    <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Asset</label>
                     {depositAssetKind === 'Fiat' ? (
                       <select
                         className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue"
@@ -808,25 +801,27 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
                     ) : (
                       <input
                         disabled
-                        value={depositAssetKind === 'USDT' ? 'USDT' : 'VC Token'}
+                        value="USDT · TRON (TRC20)"
                         className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-gray-50 text-sm font-bold text-huobi-text"
                       />
                     )}
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Amount</label>
-                    <input
-                      type="number"
-                      placeholder="0.00"
-                      value={depositAmount}
-                      onChange={(e) => {
-                        setDepositAmount(e.target.value);
-                        if (depositError) setDepositError(null);
-                      }}
-                      className="w-full px-4 py-3 rounded-xl border border-huobi-border font-mono focus:outline-none focus:border-huobi-blue"
-                    />
-                    {depositError && <p className="mt-1 text-[10px] text-huobi-down">{depositError}</p>}
-                  </div>
+                  {depositAssetKind === 'Fiat' && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">Amount</label>
+                      <input
+                        type="number"
+                        placeholder="0.00"
+                        value={depositAmount}
+                        onChange={(e) => {
+                          setDepositAmount(e.target.value);
+                          if (depositError) setDepositError(null);
+                        }}
+                        className="w-full px-4 py-3 rounded-xl border border-huobi-border font-mono focus:outline-none focus:border-huobi-blue"
+                      />
+                      {depositError && <p className="mt-1 text-[10px] text-huobi-down">{depositError}</p>}
+                    </div>
+                  )}
                   {depositAssetKind === 'Fiat' ? (
                     <div className="p-3 rounded-xl bg-huobi-card border border-huobi-border text-[11px] text-huobi-muted">
                       Minimum online deposit is 1,000.00. After confirming, you will receive funding instructions and a reference code for your bank
@@ -850,7 +845,7 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
                   </div>
                 </>
               )}
-              {depositStep === 'summary' && (
+              {depositStep === 'summary' && depositAssetKind === 'Fiat' && (
                 <>
                   <p className="text-[11px] text-huobi-muted">
                     Please review the deposit details below. Use the provided bank information and reference when initiating the transfer.
@@ -896,7 +891,7 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
                   </div>
                 </>
               )}
-              {depositStep === 'submitted' && (
+              {depositStep === 'submitted' && depositAssetKind === 'Fiat' && (
                 <div className="flex flex-col gap-5">
                   <div className="p-4 rounded-2xl bg-huobi-up/10 border border-huobi-up/40 flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-huobi-up mt-0.5" />
@@ -939,14 +934,14 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
                     <div>
                       <div className="text-huobi-muted uppercase font-bold">Asset</div>
                       <div className="mt-1 font-bold text-huobi-text">
-                        {depositAssetKind === 'Fiat' ? depositCurrency : depositAssetKind === 'USDT' ? 'USDT' : 'VC Token'}
+                        {depositAssetKind === 'Fiat' ? depositCurrency : 'USDT'}
                       </div>
                     </div>
                     <div>
                       <div className="text-huobi-muted uppercase font-bold">Amount</div>
                       <div className="mt-1 font-mono text-huobi-text">
                         {Number(depositAmount || 0).toLocaleString()}{' '}
-                        {depositAssetKind === 'Fiat' ? depositCurrency : depositAssetKind === 'USDT' ? 'USDT' : 'VCT'}
+                        {depositAssetKind === 'Fiat' ? depositCurrency : 'USDT'}
                       </div>
                     </div>
                     <div>
@@ -968,7 +963,7 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
                   <div className="p-3 rounded-xl bg-huobi-card border border-huobi-border text-[11px] text-huobi-muted">
                     {depositAssetKind === 'Fiat'
                       ? 'Bank: VC Finance Client Trust · Account: 123-456789-001. Use the reference above in your bank transfer remark so we can match and credit the funds to your account.'
-                      : 'Send your USDT / VC Token from your external wallet to the dedicated deposit address shown in your email / notification. Transfers will be credited after sufficient network confirmations.'}
+                      : 'Send your USDT from your external wallet to the dedicated deposit address shown in your email / notification. Transfers will be credited after sufficient network confirmations.'}
                   </div>
 
                   <div className="flex flex-wrap justify-between gap-3 text-[11px]">
@@ -1018,7 +1013,7 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
                             withdrawAssetKind === kind ? 'bg-huobi-text text-white' : 'text-huobi-muted'
                           )}
                         >
-                          {kind === 'Fiat' ? 'Fiat' : kind === 'USDT' ? 'USDT' : 'VC Token'}
+                          {kind === 'Fiat' ? 'Fiat' : 'USDT'}
                         </button>
                       ))}
                     </div>
@@ -1038,7 +1033,7 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
                     ) : (
                       <input
                         disabled
-                        value={withdrawAssetKind === 'USDT' ? 'USDT' : 'VC Token'}
+                        value="USDT"
                         className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-gray-50 text-sm font-bold text-huobi-text"
                       />
                     )}
@@ -1127,14 +1122,13 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
                     <div>
                       <div className="text-huobi-muted uppercase font-bold">Asset</div>
                       <div className="mt-1 font-bold text-huobi-text">
-                        {withdrawAssetKind === 'Fiat' ? withdrawCurrency : withdrawAssetKind === 'USDT' ? 'USDT' : 'VC Token'}
+                        {withdrawAssetKind === 'Fiat' ? withdrawCurrency : 'USDT'}
                       </div>
                     </div>
                     <div>
                       <div className="text-huobi-muted uppercase font-bold">Amount</div>
                       <div className="mt-1 font-mono text-huobi-text">
-                        {Number(withdrawAmount || 0).toLocaleString()}{' '}
-                        {withdrawAssetKind === 'Fiat' ? withdrawCurrency : withdrawAssetKind === 'USDT' ? 'USDT' : 'VCT'}
+                        {Number(withdrawAmount || 0).toLocaleString()} {withdrawAssetKind === 'Fiat' ? withdrawCurrency : 'USDT'}
                       </div>
                     </div>
                     <div>
@@ -1182,17 +1176,17 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
           {openAction === 'transfer' && (
             <div className="flex flex-col gap-4">
               <p className="text-[11px] text-huobi-muted">
-                Exchange between USDT and VC Token inside your account. Balances update instantly once the exchange is processed.
+                Exchange between USDT and HKD inside your account. Balances update after the exchange is processed.
               </p>
               <div>
                 <label className="block text-[10px] font-bold text-huobi-muted uppercase tracking-wider mb-1">From</label>
                 <select
                   className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue"
                   value={transferFrom}
-                  onChange={(e) => setTransferFrom(e.target.value as 'USDT' | 'VCT')}
+                  onChange={(e) => setTransferFrom(e.target.value as 'USDT' | 'HKD')}
                 >
                   <option value="USDT">USDT</option>
-                  <option value="VCT">VC Token</option>
+                  <option value="HKD">HKD</option>
                 </select>
               </div>
               <div>
@@ -1200,10 +1194,10 @@ export default function AssetsView({ positions }: { positions: Position[] }) {
                 <select
                   className="w-full px-4 py-3 rounded-xl border border-huobi-border bg-white text-sm font-bold focus:outline-none focus:border-huobi-blue"
                   value={transferTo}
-                  onChange={(e) => setTransferTo(e.target.value as 'USDT' | 'VCT')}
+                  onChange={(e) => setTransferTo(e.target.value as 'USDT' | 'HKD')}
                 >
                   <option value="USDT">USDT</option>
-                  <option value="VCT">VC Token</option>
+                  <option value="HKD">HKD</option>
                 </select>
               </div>
               <div>

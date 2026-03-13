@@ -2850,25 +2850,25 @@ export default function App() {
       {/* Mobile Footer */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 h-14 border-t border-huobi-border bg-huobi-card flex items-center justify-around px-4 z-[90]">
         <button 
+          onClick={() => handleViewChange('Dashboard')}
+          className={cn("flex flex-col items-center gap-1", view === 'Dashboard' ? "text-huobi-blue" : "text-huobi-muted")}
+        >
+          <LayoutGrid className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Home</span>
+        </button>
+        <button 
           onClick={() => handleViewChange('Market')}
           className={cn("flex flex-col items-center gap-1", view === 'Market' ? "text-huobi-blue" : "text-huobi-muted")}
         >
-          <LayoutGrid className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Market</span>
+          <TrendingUp className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Brokerage</span>
         </button>
         <button 
           onClick={() => handleViewChange('Trade')}
           className={cn("flex flex-col items-center gap-1", view === 'Trade' ? "text-huobi-blue" : "text-huobi-muted")}
         >
-          <TrendingUp className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Trade</span>
-        </button>
-        <button 
-          onClick={() => handleViewChange('Records')}
-          className={cn("flex flex-col items-center gap-1", view === 'Records' ? "text-huobi-blue" : "text-huobi-muted")}
-        >
           <Clock className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Records</span>
+          <span className="text-[10px] font-bold">Trade</span>
         </button>
         <button 
           onClick={() => handleViewChange('Assets')}
